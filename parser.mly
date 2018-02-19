@@ -30,17 +30,17 @@ program:
   decls EOF { $1 }
 
 decls:
-   /* nothing */ { ([], [])               }
- | decls vdecl { (($2 :: fst $1), snd $1) }
- | decls fdecl { (fst $1, ($2 :: snd $1)) }
+   /* nothing */ { ([], [])                                    }
+ | decls vdecl_list SEMI { (((List.rev $2) :: fst $1), snd $1) }
+ | decls fdecl { (fst $1, ($2 :: snd $1))                      }
 
 fdecl:
-   typ ID LPAREN formals_opt RPAREN LBRACE vdecl_list stmt_list RBRACE
+   typ ID LPAREN formals_opt RPAREN LBRACE stmt_list RBRACE
      { { typ = $1;
 	 fname = $2;
 	 formals = $4;
-	 locals = List.rev $7;
-	 body = List.rev $8 } }
+         locals = [];
+	 body = List.rev $7 } }
 
 formals_opt:
     /* nothing */ { [] }
@@ -67,12 +67,12 @@ typ:
   | nonprim_typ { $1 }
 
 vdecl_list:
-    /* nothing */    { [] }
-  | vdecl_list vdecl { $2 :: $1 }
+    typ vdecl              { [(($1, snd (fst $2)), snd $2)]     }
+  | vdecl_list COMMA vdecl { $3 :: $1                           }
 
 vdecl:
-    typ ID SEMI             { (($1, $2), Noexpr) }
-  | typ ID ASSIGN expr SEMI { (($1, $2), $4)     }
+    ID             { ((Notyp, $1), Noexpr) }
+  | ID ASSIGN expr { ((Notyp, $1), $3)     }
 
 stmt_list:
     /* nothing */  { [] }
@@ -89,6 +89,7 @@ stmt:
   | WHILE LPAREN expr RPAREN stmt           { While($3, $5)         }
   | BREAK SEMI                              { Break }
   | CONTINUE SEMI                           { Continue }
+  | vdecl_list SEMI                         { VarDecs(List.rev $1) }
 
 expr_opt:
     /* nothing */ { Noexpr }

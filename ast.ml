@@ -3,7 +3,7 @@ type op = Add | Sub | Mult | Div | Equal | Neq | Less | Leq | Greater | Geq |
 
 type uop = Neg | Not
 
-type typ = Int | Bool | Float | String | Void | Pix | Placement | Frame 
+type typ = Int | Bool | Float | String | Void | Pix | Placement | Frame | Notyp
 
 type null = Null
 
@@ -34,6 +34,7 @@ type stmt =
   | While of expr * stmt
   | Break 
   | Continue
+  | VarDecs of var list
 
 type func_decl = {
     typ : typ;
@@ -43,7 +44,7 @@ type func_decl = {
     body : stmt list;
   }
 
-type program = var list * func_decl list
+type program = var list list * func_decl list
 
 (* Pretty-printing functions *)
 
@@ -75,6 +76,7 @@ let string_of_typ = function
   | Pix -> "Pix"
   | Placement -> "Placement"
   | Frame -> "Frame"
+  | Notyp -> ""
 
 let rec string_of_expr = function
     Literal(l) -> string_of_int l
@@ -94,6 +96,15 @@ let rec string_of_expr = function
   | New(t, el) ->
      "new " ^ string_of_typ t ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ")"
 
+let string_of_vdecl ((t, id), value) = 
+  match value with
+  | Noexpr -> string_of_typ t ^ " " ^ id
+  | _ -> string_of_typ t ^ " " ^ id ^ " = " ^ string_of_expr value
+
+let string_of_vdecls (vars) =
+  (String.concat "," (List.map string_of_vdecl vars)) ^ if (List.length vars) > 0
+  then ";\n" else ""
+
 let rec string_of_stmt = function
     Block(stmts) ->
       "{\n" ^ String.concat "" (List.map string_of_stmt stmts) ^ "}\n"
@@ -108,20 +119,15 @@ let rec string_of_stmt = function
   | While(e, s) -> "while (" ^ string_of_expr e ^ ") " ^ string_of_stmt s
   | Break -> "break;\n"
   | Continue -> "continue;\n"
-
-let string_of_vdecl ((t, id), value) = 
-  match value with
-  | Noexpr -> string_of_typ t ^ " " ^ id ^ ";\n"
-  | _ -> string_of_typ t ^ " " ^ id ^ " = " ^ string_of_expr value ^ ";\n"
+  | VarDecs(vars) -> String.concat "," (List.map string_of_vdecl vars) ^ ";\n"
 
 let string_of_fdecl fdecl =
   string_of_typ fdecl.typ ^ " " ^
   fdecl.fname ^ "(" ^ String.concat ", " (List.map snd fdecl.formals) ^
   ")\n{\n" ^
-  String.concat "" (List.map string_of_vdecl fdecl.locals) ^
   String.concat "" (List.map string_of_stmt fdecl.body) ^
   "}\n"
 
-let string_of_program (vars, funcs) =
-  String.concat "" (List.map string_of_vdecl vars) ^ "\n" ^
+let string_of_program (vars_list, funcs) =
+  String.concat "" (List.map string_of_vdecls vars_list) ^
   String.concat "\n" (List.map string_of_fdecl funcs)
