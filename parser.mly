@@ -2,7 +2,8 @@
 
 %token SEMI LPAREN RPAREN LBRACE RBRACE COMMA PLUS MINUS TIMES DIVIDE ASSIGN MOD
 %token NOT EQ NEQ LT LEQ GT GEQ AND OR
-%token RETURN IF ELSE FOR WHILE INT BOOL FLOAT STRING VOID
+%token RETURN IF ELSE FOR WHILE BREAK CONTINUE
+%token INT BOOL FLOAT STRING VOID PIX PLACEMENT FRAME NULL NEW
 %token <int> LITERAL
 %token <bool> BLIT
 %token <string> ID SLIT
@@ -22,7 +23,6 @@
 %left PLUS MINUS
 %left TIMES DIVIDE MOD
 %right NOT NEG
-
 
 %%
 
@@ -50,19 +50,29 @@ formal_list:
     typ ID                   { [($1,$2)]     }
   | formal_list COMMA typ ID { ($3,$4) :: $1 }
 
-typ:
+prim_typ:
     INT    { Int    }
   | BOOL   { Bool   }
   | FLOAT  { Float  }
   | STRING { String }
   | VOID   { Void   }
 
+nonprim_typ:
+    PIX       { Pix       }
+  | PLACEMENT { Placement }
+  | FRAME     { Frame     }
+
+typ:
+    prim_typ    { $1 }
+  | nonprim_typ { $1 }
+
 vdecl_list:
     /* nothing */    { [] }
   | vdecl_list vdecl { $2 :: $1 }
 
 vdecl:
-   typ ID SEMI { ($1, $2) }
+    typ ID SEMI             { (($1, $2), Noexpr) }
+  | typ ID ASSIGN expr SEMI { (($1, $2), $4)     }
 
 stmt_list:
     /* nothing */  { [] }
@@ -77,6 +87,8 @@ stmt:
   | FOR LPAREN expr_opt SEMI expr SEMI expr_opt RPAREN stmt
                                             { For($3, $5, $7, $9)   }
   | WHILE LPAREN expr RPAREN stmt           { While($3, $5)         }
+  | BREAK SEMI                              { Break }
+  | CONTINUE SEMI                           { Continue }
 
 expr_opt:
     /* nothing */ { Noexpr }
@@ -88,6 +100,7 @@ expr:
   | BLIT             { BoolLit($1)            }
   | SLIT             { StringLit($1)          }
   | ID               { Id($1)                 }
+  | NULL             { Null                   }
   | expr PLUS   expr { Binop($1, Add,   $3)   }
   | expr MINUS  expr { Binop($1, Sub,   $3)   }
   | expr TIMES  expr { Binop($1, Mult,  $3)   }
@@ -106,6 +119,7 @@ expr:
   | ID ASSIGN expr   { Assign($1, $3)         }
   | ID LPAREN args_opt RPAREN { Call($1, $3)  }
   | LPAREN expr RPAREN { $2                   }
+  | NEW nonprim_typ LPAREN args_opt RPAREN { New($2, $4) } 
 
 args_opt:
     /* nothing */ { [] }

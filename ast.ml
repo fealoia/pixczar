@@ -3,9 +3,9 @@ type op = Add | Sub | Mult | Div | Equal | Neq | Less | Leq | Greater | Geq |
 
 type uop = Neg | Not
 
-type typ = Int | Bool | Float | String | Void
+type typ = Int | Bool | Float | String | Void | Pix | Placement | Frame 
 
-type bind = typ * string
+type null = Null
 
 type expr =
     Literal of int
@@ -18,6 +18,12 @@ type expr =
   | Assign of string * expr
   | Call of string * expr list
   | Noexpr
+  | Null
+  | New of typ * expr list
+
+type bind = typ * string
+
+type var = bind * expr
 
 type stmt =
     Block of stmt list
@@ -26,16 +32,18 @@ type stmt =
   | If of expr * stmt * stmt
   | For of expr * expr * expr * stmt
   | While of expr * stmt
+  | Break 
+  | Continue
 
 type func_decl = {
     typ : typ;
     fname : string;
     formals : bind list;
-    locals : bind list;
+    locals : var list;
     body : stmt list;
   }
 
-type program = bind list * func_decl list
+type program = var list * func_decl list
 
 (* Pretty-printing functions *)
 
@@ -58,6 +66,16 @@ let string_of_uop = function
     Neg -> "-"
   | Not -> "!"
 
+let string_of_typ = function
+    Int -> "Int"
+  | Bool -> "Boolean"
+  | Float -> "Float"
+  | String -> "String"
+  | Void -> "Void"
+  | Pix -> "Pix"
+  | Placement -> "Placement"
+  | Frame -> "Frame"
+
 let rec string_of_expr = function
     Literal(l) -> string_of_int l
   | Fliteral(l) -> string_of_float l
@@ -72,6 +90,9 @@ let rec string_of_expr = function
   | Call(f, el) ->
       f ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ")"
   | Noexpr -> ""
+  | Null -> "null"
+  | New(t, el) ->
+     "new " ^ string_of_typ t ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ")"
 
 let rec string_of_stmt = function
     Block(stmts) ->
@@ -85,15 +106,13 @@ let rec string_of_stmt = function
       "for (" ^ string_of_expr e1  ^ " ; " ^ string_of_expr e2 ^ " ; " ^
       string_of_expr e3  ^ ") " ^ string_of_stmt s
   | While(e, s) -> "while (" ^ string_of_expr e ^ ") " ^ string_of_stmt s
+  | Break -> "break;\n"
+  | Continue -> "continue;\n"
 
-let string_of_typ = function
-    Int -> "Int"
-  | Bool -> "Boolean"
-  | Float -> "Float"
-  | String -> "String"
-  | Void -> "Void"
-
-let string_of_vdecl (t, id) = string_of_typ t ^ " " ^ id ^ ";\n"
+let string_of_vdecl ((t, id), value) = 
+  match value with
+  | Noexpr -> string_of_typ t ^ " " ^ id ^ ";\n"
+  | _ -> string_of_typ t ^ " " ^ id ^ " = " ^ string_of_expr value ^ ";\n"
 
 let string_of_fdecl fdecl =
   string_of_typ fdecl.typ ^ " " ^
