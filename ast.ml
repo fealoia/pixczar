@@ -29,7 +29,8 @@ type stmt =
     Block of stmt list
   | Expr of expr
   | Return of expr
-  | If of expr * stmt * stmt
+  | If of expr * stmt * stmt list * stmt
+  | ElseIf of expr * stmt 
   | For of expr * expr * expr * stmt
   | While of expr * stmt
   | Break 
@@ -110,9 +111,11 @@ let rec string_of_stmt = function
       "{\n" ^ String.concat "" (List.map string_of_stmt stmts) ^ "}\n"
   | Expr(expr) -> string_of_expr expr ^ ";\n";
   | Return(expr) -> "return " ^ string_of_expr expr ^ ";\n";
-  | If(e, s, Block([])) -> "if (" ^ string_of_expr e ^ ")\n" ^ string_of_stmt s
-  | If(e, s1, s2) ->  "if (" ^ string_of_expr e ^ ")\n" ^
-      string_of_stmt s1 ^ "else\n" ^ string_of_stmt s2
+  | If(e, s, stmts, Block([])) -> "if (" ^ string_of_expr e ^ ")\n" ^ string_of_stmt s
+      ^ String.concat "" (List.map string_of_stmt stmts) 
+  | If(e, s1, stmts, s2) ->  "if (" ^ string_of_expr e ^ ")\n" ^
+      string_of_stmt s1 ^ String.concat "" (List.map string_of_stmt stmts) ^ "else\n" ^ string_of_stmt s2
+  | ElseIf(e, s) -> "else if (" ^ string_of_expr e ^ ")\n" ^ string_of_stmt s
   | For(e1, e2, e3, s) ->
       "for (" ^ string_of_expr e1  ^ " ; " ^ string_of_expr e2 ^ " ; " ^
       string_of_expr e3  ^ ") " ^ string_of_stmt s

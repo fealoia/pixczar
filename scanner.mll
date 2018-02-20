@@ -36,6 +36,7 @@ rule token = parse
 | "!"      { NOT }
 | "if"     { IF }
 | "else"   { ELSE }
+| "else if" { ELSEIF }
 | "for"    { FOR }
 | "while"  { WHILE }
 | "break"  { BREAK }

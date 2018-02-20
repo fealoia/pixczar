@@ -2,7 +2,7 @@
 
 %token SEMI LPAREN RPAREN LBRACE RBRACE COMMA PLUS MINUS TIMES DIVIDE ASSIGN MOD
 %token NOT EQ NEQ LT LEQ GT GEQ AND OR
-%token RETURN IF ELSE FOR WHILE BREAK CONTINUE
+%token RETURN IF ELSEIF ELSE FOR WHILE BREAK CONTINUE
 %token INT BOOL FLOAT STRING VOID PIX PLACEMENT FRAME NULL NEW
 %token <int> LITERAL
 %token <bool> BLIT
@@ -15,6 +15,7 @@
 
 %nonassoc NOELSE
 %nonassoc ELSE
+%nonassoc ELSEIF
 %right ASSIGN
 %left OR
 %left AND
@@ -79,17 +80,25 @@ stmt_list:
   | stmt_list stmt { $2 :: $1 }
 
 stmt:
-    expr SEMI                               { Expr $1               }
-  | RETURN expr_opt SEMI                    { Return $2             }
-  | LBRACE stmt_list RBRACE                 { Block(List.rev $2)    }
-  | IF LPAREN expr RPAREN stmt %prec NOELSE { If($3, $5, Block([])) }
-  | IF LPAREN expr RPAREN stmt ELSE stmt    { If($3, $5, $7)        }
+    expr SEMI                               { Expr $1                            }
+  | RETURN expr_opt SEMI                    { Return $2                          }
+  | LBRACE stmt_list RBRACE                 { Block(List.rev $2)                 }
+  | IF LPAREN expr RPAREN stmt %prec NOELSE { If($3, $5, [], Block([]))          }
+  | IF LPAREN expr RPAREN stmt ELSE stmt    { If($3, $5, [], $7)                 } 
+  | IF LPAREN expr RPAREN stmt elseif_list %prec NOELSE 
+                                            { If($3, $5, List.rev $6, Block([])) }
+  | IF LPAREN expr RPAREN stmt elseif_list ELSE stmt 
+                                            { If($3, $5, List.rev $6, $8)        }
   | FOR LPAREN expr_opt SEMI expr SEMI expr_opt RPAREN stmt
-                                            { For($3, $5, $7, $9)   }
-  | WHILE LPAREN expr RPAREN stmt           { While($3, $5)         }
-  | BREAK SEMI                              { Break }
-  | CONTINUE SEMI                           { Continue }
-  | vdecl_list SEMI                         { VarDecs(List.rev $1) }
+                                            { For($3, $5, $7, $9)                }
+  | WHILE LPAREN expr RPAREN stmt           { While($3, $5)                      }
+  | BREAK SEMI                              { Break                              }
+  | CONTINUE SEMI                           { Continue                           }
+  | vdecl_list SEMI                         { VarDecs(List.rev $1)               }
+
+elseif_list:
+  | ELSEIF LPAREN expr RPAREN stmt             { [ElseIf($3, $5)]     }
+  | elseif_list ELSEIF LPAREN expr RPAREN stmt { ElseIf($4, $6) :: $1 } 
 
 expr_opt:
     /* nothing */ { Noexpr }
