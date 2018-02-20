@@ -3,7 +3,7 @@
 %token SEMI LPAREN RPAREN LBRACE RBRACE COMMA PLUS MINUS TIMES DIVIDE ASSIGN MOD
 %token NOT EQ NEQ LT LEQ GT GEQ AND OR
 %token RETURN IF ELSEIF ELSE FOR WHILE BREAK CONTINUE
-%token INT BOOL FLOAT STRING VOID PIX PLACEMENT FRAME NULL NEW
+%token INT BOOL FLOAT STRING VOID PIX PLACEMENT FRAME NULL NEW DOT
 %token <int> LITERAL
 %token <bool> BLIT
 %token <string> ID SLIT
@@ -95,6 +95,7 @@ stmt:
   | BREAK SEMI                              { Break                              }
   | CONTINUE SEMI                           { Continue                           }
   | vdecl_list SEMI                         { VarDecs(List.rev $1)               }
+  | ID DOT ID LPAREN args_opt RPAREN SEMI   { ObjCall($1, $3, $5)                }
 
 elseif_list:
   | ELSEIF LPAREN expr RPAREN stmt             { [ElseIf($3, $5)]     }

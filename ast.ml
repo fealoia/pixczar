@@ -36,6 +36,7 @@ type stmt =
   | Break 
   | Continue
   | VarDecs of var list
+  | ObjCall of string * string * expr list
 
 type func_decl = {
     typ : typ;
@@ -123,6 +124,7 @@ let rec string_of_stmt = function
   | Break -> "break;\n"
   | Continue -> "continue;\n"
   | VarDecs(vars) -> String.concat "," (List.map string_of_vdecl vars) ^ ";\n"
+  | ObjCall(o, f, el) -> o ^ "." ^ f ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ");\n"
 
 let string_of_fdecl fdecl =
   string_of_typ fdecl.typ ^ " " ^
