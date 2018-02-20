@@ -3,7 +3,8 @@ type op = Add | Sub | Mult | Div | Equal | Neq | Less | Leq | Greater | Geq |
 
 type uop = Neg | Not
 
-type typ = Int | Bool | Float | String | Void | Pix | Placement | Frame | Notyp
+type typ = Int | Bool | Float | String | Void | Pix | Placement | Frame | Notyp |
+           Array of typ 
 
 type null = Null
 
@@ -20,6 +21,10 @@ type expr =
   | Noexpr
   | Null
   | New of typ * expr list
+  | NewArray of typ * int
+  | CreateArray of expr list
+  | SubArray of string * int * int
+  | AccessArray of string * int
 
 type bind = typ * string
 
@@ -69,7 +74,7 @@ let string_of_uop = function
     Neg -> "-"
   | Not -> "!"
 
-let string_of_typ = function
+let rec string_of_typ = function
     Int -> "Int"
   | Bool -> "Boolean"
   | Float -> "Float"
@@ -79,6 +84,7 @@ let string_of_typ = function
   | Placement -> "Placement"
   | Frame -> "Frame"
   | Notyp -> ""
+  | Array(t) -> string_of_typ t ^ "[]"
 
 let rec string_of_expr = function
     Literal(l) -> string_of_int l
@@ -97,6 +103,10 @@ let rec string_of_expr = function
   | Null -> "null"
   | New(t, el) ->
      "new " ^ string_of_typ t ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ")"
+  | CreateArray(el) -> "[" ^ String.concat "," (List.map string_of_expr el) ^ "]"
+  | SubArray(id, i1, i2) -> id ^ "[" ^ string_of_int i1 ^ ":" ^ string_of_int i2 ^ "]"
+  | AccessArray(id, i) -> id ^ "[" ^ string_of_int i ^ "]"
+  | NewArray(t, i) -> "new " ^ string_of_typ t ^ "[" ^ string_of_int i ^ "]"
 
 let string_of_vdecl ((t, id), value) = 
   match value with

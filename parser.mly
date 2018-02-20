@@ -2,6 +2,7 @@
 
 %token SEMI LPAREN RPAREN LBRACE RBRACE COMMA PLUS MINUS TIMES DIVIDE ASSIGN MOD
 %token NOT EQ NEQ LT LEQ GT GEQ AND OR
+%token LBRACK RBRACK COLON
 %token RETURN IF ELSEIF ELSE FOR WHILE BREAK CONTINUE
 %token INT BOOL FLOAT STRING VOID PIX PLACEMENT FRAME NULL NEW DOT
 %token <int> LITERAL
@@ -64,8 +65,9 @@ nonprim_typ:
   | FRAME     { Frame     }
 
 typ:
-    prim_typ    { $1 }
-  | nonprim_typ { $1 }
+    prim_typ          { $1        }
+  | nonprim_typ       { $1        }
+  | typ LBRACK RBRACK { Array($1) } 
 
 vdecl_list:
     typ vdecl              { [(($1, snd (fst $2)), snd $2)]     }
@@ -130,7 +132,12 @@ expr:
   | ID ASSIGN expr   { Assign($1, $3)         }
   | ID LPAREN args_opt RPAREN { Call($1, $3)  }
   | LPAREN expr RPAREN { $2                   }
-  | NEW nonprim_typ LPAREN args_opt RPAREN { New($2, $4) } 
+  | NEW nonprim_typ LPAREN args_opt RPAREN { New($2, $4)          }
+  | NEW nonprim_typ LBRACK LITERAL RBRACK  { NewArray($2, $4)     }
+  | NEW prim_typ LBRACK LITERAL RBRACK     { NewArray($2, $4)     }
+  | LBRACK args_opt RBRACK                 { CreateArray($2)      }
+  | ID LBRACK LITERAL RBRACK               { AccessArray($1, $3)  }
+  | ID LBRACK LITERAL COLON LITERAL RBRACK { SubArray($1, $3, $5) }
 
 args_opt:
     /* nothing */ { [] }
