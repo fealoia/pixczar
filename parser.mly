@@ -4,7 +4,7 @@
 %token NOT EQ NEQ LT LEQ GT GEQ AND OR
 %token LBRACK RBRACK COLON
 %token RETURN IF ELSEIF ELSE FOR WHILE BREAK CONTINUE
-%token INT BOOL FLOAT STRING VOID PIX PLACEMENT FRAME NULL NEW DOT
+%token INT BOOL FLOAT STRING VOID PIX PLACEMENT FRAME NULL NEW DOT STRUCT
 %token <int> LITERAL
 %token <bool> BLIT
 %token <string> ID SLIT
@@ -65,9 +65,10 @@ nonprim_typ:
   | FRAME     { Frame     }
 
 typ:
-    prim_typ          { $1        }
-  | nonprim_typ       { $1        }
-  | typ LBRACK RBRACK { Array($1) } 
+    prim_typ          { $1         }
+  | nonprim_typ       { $1         }
+  | typ LBRACK RBRACK { Array($1)  }
+  | STRUCT ID         { Struct($2) }
 
 vdecl_list:
     typ vdecl              { [(($1, snd (fst $2)), snd $2)]     }
@@ -77,27 +78,34 @@ vdecl:
     ID             { ((Notyp, $1), Noexpr) }
   | ID ASSIGN expr { ((Notyp, $1), $3)     }
 
+struct_vdecl_list:
+    /* nothing */                     { []       }
+  | vdecl_list                        { [$1]     }
+  | struct_vdecl_list SEMI vdecl_list { $3 :: $1 }
+
 stmt_list:
     /* nothing */  { [] }
   | stmt_list stmt { $2 :: $1 }
 
 stmt:
-    expr SEMI                               { Expr $1                            }
-  | RETURN expr_opt SEMI                    { Return $2                          }
-  | LBRACE stmt_list RBRACE                 { Block(List.rev $2)                 }
-  | IF LPAREN expr RPAREN stmt %prec NOELSE { If($3, $5, [], Block([]))          }
-  | IF LPAREN expr RPAREN stmt ELSE stmt    { If($3, $5, [], $7)                 } 
+    expr SEMI                                 { Expr $1                            }
+  | RETURN expr_opt SEMI                      { Return $2                          }
+  | LBRACE stmt_list RBRACE                   { Block(List.rev $2)                 }
+  | IF LPAREN expr RPAREN stmt %prec NOELSE   { If($3, $5, [], Block([]))          }
+  | IF LPAREN expr RPAREN stmt ELSE stmt      { If($3, $5, [], $7)                 } 
   | IF LPAREN expr RPAREN stmt elseif_list %prec NOELSE 
-                                            { If($3, $5, List.rev $6, Block([])) }
+                                              { If($3, $5, List.rev $6, Block([])) }
   | IF LPAREN expr RPAREN stmt elseif_list ELSE stmt 
-                                            { If($3, $5, List.rev $6, $8)        }
+                                              { If($3, $5, List.rev $6, $8)        }
   | FOR LPAREN expr_opt SEMI expr SEMI expr_opt RPAREN stmt
-                                            { For($3, $5, $7, $9)                }
-  | WHILE LPAREN expr RPAREN stmt           { While($3, $5)                      }
-  | BREAK SEMI                              { Break                              }
-  | CONTINUE SEMI                           { Continue                           }
-  | vdecl_list SEMI                         { VarDecs(List.rev $1)               }
-  | ID DOT ID LPAREN args_opt RPAREN SEMI   { ObjCall($1, $3, $5)                }
+                                              { For($3, $5, $7, $9)                }
+  | WHILE LPAREN expr RPAREN stmt             { While($3, $5)                      }
+  | BREAK SEMI                                { Break                              }
+  | CONTINUE SEMI                             { Continue                           }
+  | vdecl_list SEMI                           { VarDecs(List.rev $1)               }
+  | ID DOT ID LPAREN args_opt RPAREN SEMI     { ObjCall($1, $3, $5)                }
+  | STRUCT ID LBRACE struct_vdecl_list SEMI RBRACE 
+                                              { CreateStruct($2, List.rev $4)      }
 
 elseif_list:
   | ELSEIF LPAREN expr RPAREN stmt             { [ElseIf($3, $5)]     }
@@ -138,6 +146,7 @@ expr:
   | LBRACK args_opt RBRACK                 { CreateArray($2)      }
   | ID LBRACK LITERAL RBRACK               { AccessArray($1, $3)  }
   | ID LBRACK LITERAL COLON LITERAL RBRACK { SubArray($1, $3, $5) }
+  | ID DOT ID                              { AccessStruct($1, $3) }
 
 args_opt:
     /* nothing */ { [] }
