@@ -79,8 +79,7 @@ vdecl:
   | ID ASSIGN expr { ((Notyp, $1), $3)     }
 
 struct_vdecl_list:
-    /* nothing */                     { []       }
-  | vdecl_list                        { [$1]     }
+    vdecl_list                        { [$1]     }
   | struct_vdecl_list SEMI vdecl_list { $3 :: $1 }
 
 stmt_list:
