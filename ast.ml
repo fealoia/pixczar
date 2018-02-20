@@ -149,5 +149,5 @@ let string_of_fdecl fdecl =
   "}\n"
 
 let string_of_program (vars_list, funcs) =
-  String.concat "" (List.map string_of_vdecls vars_list) ^
-  String.concat "\n" (List.map string_of_fdecl funcs)
+  String.concat "" (List.map string_of_vdecls (List.rev vars_list)) ^ "\n" ^
+  String.concat "\n" (List.map string_of_fdecl (List.rev funcs))
