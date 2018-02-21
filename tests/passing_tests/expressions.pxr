@@ -39,4 +39,5 @@ new Int [3];
 [a+b,c/d,e*f];
 name [4];
 name [3:4];
+name.name2;
 }

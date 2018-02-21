@@ -9,6 +9,8 @@ if (a=a) return;
 Void test3(){
 if (a=a) a=3; else a=4;
 return;
+if (a) a=3; else if(b) continue;
+if (a) a=3; else if(b) return; else if(c) continue; else e;
 }
 
 Void test4(){
@@ -18,4 +20,16 @@ for(;a=a;){}
 
 Void test5(){
 while(a=a){}
+}
+
+Void test6(){
+while(b){}
+break;
+continue;
+name.name2(a);
+name.name2(a/b*c);
+name.name2(new Pix[3]);
+Struct name {Int l;};
+Struct name2{Int v = 3, name, name3;};
+Struct name3{Int v, name; Boolean three = true;};
 }

@@ -91,10 +91,10 @@ stmt:
   | RETURN expr_opt SEMI                      { Return $2                          }
   | LBRACE stmt_list RBRACE                   { Block(List.rev $2)                 }
   | IF LPAREN expr RPAREN stmt %prec NOELSE   { If($3, $5, [], Block([]))          }
-  | IF LPAREN expr RPAREN stmt ELSE stmt      { If($3, $5, [], $7)                 } 
-  | IF LPAREN expr RPAREN stmt elseif_list %prec NOELSE 
+  | IF LPAREN expr RPAREN stmt ELSE stmt      { If($3, $5, [], $7)                 }
+  | IF LPAREN expr RPAREN stmt elseif_list %prec NOELSE
                                               { If($3, $5, List.rev $6, Block([])) }
-  | IF LPAREN expr RPAREN stmt elseif_list ELSE stmt 
+  | IF LPAREN expr RPAREN stmt elseif_list ELSE stmt
                                               { If($3, $5, List.rev $6, $8)        }
   | FOR LPAREN expr_opt SEMI expr SEMI expr_opt RPAREN stmt
                                               { For($3, $5, $7, $9)                }
@@ -103,12 +103,12 @@ stmt:
   | CONTINUE SEMI                             { Continue                           }
   | vdecl_list SEMI                           { VarDecs(List.rev $1)               }
   | ID DOT ID LPAREN args_opt RPAREN SEMI     { ObjCall($1, $3, $5)                }
-  | STRUCT ID LBRACE struct_vdecl_list SEMI RBRACE 
+  | STRUCT ID LBRACE struct_vdecl_list SEMI RBRACE SEMI
                                               { CreateStruct($2, List.rev $4)      }
 
 elseif_list:
   | ELSEIF LPAREN expr RPAREN stmt             { [ElseIf($3, $5)]     }
-  | elseif_list ELSEIF LPAREN expr RPAREN stmt { ElseIf($4, $6) :: $1 } 
+  | elseif_list ELSEIF LPAREN expr RPAREN stmt { ElseIf($4, $6) :: $1 }
 
 expr_opt:
     /* nothing */ { Noexpr }
