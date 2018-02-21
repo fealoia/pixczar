@@ -1,4 +1,5 @@
 Void test(){
+3+3;
 Int a;
 Float b;
 String c;

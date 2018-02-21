@@ -34,7 +34,7 @@ new Pix (a,b,c);
 new Pix (a+a);
 new Placement [2];
 new Int [3];
-[Null];
+[null];
 [a,b,c];
 [a+b,c/d,e*f];
 name [4];

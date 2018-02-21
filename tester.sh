@@ -17,10 +17,11 @@ do
   output=$(./pixczar.native $file)
   if  [ -z "$output" ];
   then
-    echo ${red}$failure "\n\n" ${reset}
+    echo ${red}$failure ${reset}
   else
-    echo ${green}$success "\n ${reset}$output \n"
+    echo ${green}$success "\n ${reset}$output"
   fi
+  echo "--------------------------------------"
 done
 
 for file in $failing_tests
@@ -29,8 +30,9 @@ do
   output=$(./pixczar.native $file)
   if  [ -z "$output" ];
   then
-    echo ${green}$failure "\n\n" ${reset}
+    echo ${green}$failure ${reset}
   else
-    echo ${red}$success "\n ${reset}$output \n"
+    echo ${red}$success "\n ${reset}$output"
   fi
+  echo "--------------------------------------"
 done
