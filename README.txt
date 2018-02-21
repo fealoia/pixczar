@@ -1,3 +1,11 @@
+PixCzar: An Animation Language
+
+Frank Aloia - fea2113@columbia.edu
+Gary Chen - gc2676@columbia.edu
+Bryan Li - bl2557@columbia.edu
+Matias Lirman - ml3707@columbia.edu
+________________________________________________________________
+
 How to Compile: "ocamlbuild pixczar.native"
 
 How to Execute: "./pixczar.native [file.pxr]"
