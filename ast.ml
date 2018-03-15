@@ -26,6 +26,8 @@ type expr =
   | SubArray of string * int * int
   | AccessArray of string * int
   | AccessStruct of string * string
+  | PostIncrement of expr
+  | PostDecrement of expr
 
 type bind = typ * string
 
@@ -111,6 +113,8 @@ let rec string_of_expr = function
   | AccessArray(id, i) -> id ^ "[" ^ string_of_int i ^ "]"
   | NewArray(t, i) -> "new " ^ string_of_typ t ^ "[" ^ string_of_int i ^ "]"
   | AccessStruct(i1, i2) -> i1 ^ "." ^ i2
+  | PostIncrement(e) -> "(" ^ string_of_expr e ^ ")++"
+  | PostDecrement(e) -> "(" ^ string_of_expr e ^ ")--"
 
 let string_of_vdecl ((t, id), value) = 
   match value with

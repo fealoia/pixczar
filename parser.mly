@@ -146,6 +146,8 @@ expr:
   | ID LBRACK LITERAL RBRACK               { AccessArray($1, $3)  }
   | ID LBRACK LITERAL COLON LITERAL RBRACK { SubArray($1, $3, $5) }
   | ID DOT ID                              { AccessStruct($1, $3) }
+  | expr PLUS PLUS                         { PostIncrement($1)    }
+  | expr MINUS MINUS                       { PostDecrement($1)    }
 
 args_opt:
     /* nothing */ { [] }
