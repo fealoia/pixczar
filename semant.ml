@@ -106,7 +106,7 @@ let check (globals, functions) =
       | StringLit l -> (String, SStringLit l)
       | Noexpr    l -> (Void, SNoexpr)
       | Null      l -> (Null, Null) (* check this, I think we overloaded Null in ast *)
-      | Id s      l -> (type_of_identifier s, SId s)
+      | Id        l -> (type_of_identifier s, SId s)
       | Assign(var, e) as ex ->
           let lt = type_of_identifier var
           and (rt, e') = check_expr e in
@@ -156,18 +156,18 @@ let check (globals, functions) =
           in (fd.typ, SCall(fname, args'))
       | New(t, args) as new_l ->
           let len_err len = "expecting " ^ string_of_int len ^
-                            " arguments in " ^ string_of_expr new_l)=
+                            " arguments in " ^ string_of_expr new_l
           and typ_err index t1 t2  = "expected arg " ^ string_of_int index ^ " of " ^
                                      string_of_expr new_l ^ "to be of type " ^ t1 ^ ", got " ^
                                      string_of_typ t2 ^ "instead"
-          and let check_pix args =
-            if List.length args != 0 then raise (Failure len_err 0) else args
-          and let check_placement args =
-            if List.length args != 5 then raise (Failure len_err 5) else
+          and check_pix args =
+            if List.length args != 0 then raise (Failure (len_err 0)) else args
+          and check_placement args =
+            if List.length args != 5 then raise (Failure (len_err 5)) else
               (* if EACH PARAM IS NOT CORRECT TYPE then raise (Failure typ_err index t1 t2) *)
               args
-          and let check_frame args =
-            if List.length args != 2 then raise (Failure len_err 2) else
+          and check_frame args =
+            if List.length args != 2 then raise (Failure (len_err 2)) else
               (* check param types *)
               args
           in let _ = match t with
@@ -219,7 +219,7 @@ let check (globals, functions) =
             | []              -> []
           in SBlock(check_stmt_list sl)
 
-
+    in 
     let check_bool_expr e =
       let (t', e') = expr e
       and err = "expected Boolean expression in " ^ string_of_expr e
@@ -256,10 +256,10 @@ let check (globals, functions) =
                            " in " ^ string_of_typ t
           and t = type_of_identifier name
           and f = if StringMap.find func (StringMap.find name symbols).methods then
-                  f else raise (Failure meth_err t)
-          and let formals_len = List.length f.formals
-          and _ = if formals_len != List.length args != then
-                  raise (Failure len_err formals_len) else args
+                  f else raise (Failure (meth_err t))
+          and formals_len = List.length f.formals
+          and _ = if formals_len != List.length args then
+                  raise (Failure (len_err formals_len)) else args
           in (t, SObjCall(name, func, args))
 
 (*
@@ -279,4 +279,4 @@ let check (globals, functions) =
       | _ -> let err = "internal error: block didn't become a block?"
       in raise (Failure err)
     }
-  in (globals', List.map check_function functions)
+in (globals', List.map check_function functions)
