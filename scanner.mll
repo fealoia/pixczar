@@ -1,4 +1,4 @@
-(* Ocamllex scanneddr for PixCzar *)
+(* Ocamllex scanner for PixCzar *)
 
 { open Parser }
 
@@ -6,7 +6,7 @@ let digit = ['0' - '9']
 let digits = digit+
 
 let stringcharacters = [' ' '\t' '\r' '\n' 'a'-'z' 'A'-'Z' '!' '"' '#' '%' '&' '\''
-'(' ')' '*' '+' ',' '-' '.' '/' ':' ';' '<' '=' '>' '?' '[' '\\' ']' '^' '_' 
+'(' ')' '*' '+' ',' '-' '.' '/' ':' ';' '<' '=' '>' '?' '[' '\\' ']' '^' '_'
 '{' '|' '}' '~']
 
 rule token = parse

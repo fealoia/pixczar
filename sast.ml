@@ -46,7 +46,7 @@ type sfunc_decl = {
     sbody : sstmt list;
   }
 
-type sprogram = svar list list * func_decl slist
+type sprogram = svar list list * sfunc_decl list
 
 (* Pretty-printing functions *)
 
