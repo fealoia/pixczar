@@ -47,6 +47,14 @@ type sfunc_decl = {
     sbody : sstmt list;
   }
 
+type sobj = {
+  styp: typ; (*Pix, Frame, Placement*)
+  soname: string;
+  sctor: fdecl;
+  sdecls: bind list;
+  smethods: func_decl list;
+}
+
 type sprogram = svar list list * sfunc_decl list
 
 (* Pretty-printing functions *)

@@ -56,6 +56,14 @@ type func_decl = {
     body : stmt list;
   }
 
+type obj = {
+  typ: typ; (*Pix, Frame, Placement*)
+  oname: string;
+  ctor: fdecl;
+  decls: bind list;
+  methods: func_decl list;
+}
+
 type program = var list list * func_decl list
 
 (* Pretty-printing functions *)
