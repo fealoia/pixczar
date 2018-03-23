@@ -4,7 +4,7 @@ type op = Add | Sub | Mult | Div | Equal | Neq | Less | Leq | Greater | Geq |
 type uop = Neg | Not
 
 type typ = Int | Bool | Float | String | Void | Pix | Placement | Frame | Notyp |
-           Array of typ | Struct of string 
+           Array of typ | Struct of string
 
 type null = Null
 
@@ -38,12 +38,13 @@ type stmt =
   | Expr of expr
   | Return of expr
   | If of expr * stmt * stmt list * stmt
-  | ElseIf of expr * stmt 
+  | ElseIf of expr * stmt
   | For of expr * expr * expr * stmt
   | While of expr * stmt
-  | Break 
+  | Break
   | Continue
   | VarDecs of var list
+  | VarDec of var
   | ObjCall of string * string * expr list
   | CreateStruct of string * var list list
 
@@ -116,7 +117,7 @@ let rec string_of_expr = function
   | PostIncrement(e) -> "(" ^ string_of_expr e ^ ")++"
   | PostDecrement(e) -> "(" ^ string_of_expr e ^ ")--"
 
-let string_of_vdecl ((t, id), value) = 
+let string_of_vdecl ((t, id), value) =
   match value with
   | Noexpr -> string_of_typ t ^ " " ^ id
   | _ -> string_of_typ t ^ " " ^ id ^ " = " ^ string_of_expr value
@@ -130,7 +131,7 @@ let rec string_of_stmt = function
   | Expr(expr) -> string_of_expr expr ^ ";\n";
   | Return(expr) -> "return " ^ string_of_expr expr ^ ";\n";
   | If(e, s, stmts, Block([])) -> "if (" ^ string_of_expr e ^ ")\n" ^ string_of_stmt s
-      ^ String.concat "" (List.map string_of_stmt stmts) 
+      ^ String.concat "" (List.map string_of_stmt stmts)
   | If(e, s1, stmts, s2) ->  "if (" ^ string_of_expr e ^ ")\n" ^
       string_of_stmt s1 ^ String.concat "" (List.map string_of_stmt stmts) ^ "else\n" ^ string_of_stmt s2
   | ElseIf(e, s) -> "else if (" ^ string_of_expr e ^ ")\n" ^ string_of_stmt s
@@ -142,8 +143,8 @@ let rec string_of_stmt = function
   | Continue -> "continue;\n"
   | VarDecs(vars) -> String.concat "," (List.map string_of_vdecl vars) ^ ";\n"
   | ObjCall(o, f, el) -> o ^ "." ^ f ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ");\n"
-  | CreateStruct(s, vdecls) -> "Struct " ^ s ^ "\n{\n" ^ 
-      String.concat "" (List.map string_of_vdecls vdecls) ^ "};\n" 
+  | CreateStruct(s, vdecls) -> "Struct " ^ s ^ "\n{\n" ^
+      String.concat "" (List.map string_of_vdecls vdecls) ^ "};\n"
 
 let string_of_fdecl fdecl =
   string_of_typ fdecl.typ ^ " " ^

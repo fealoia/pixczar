@@ -35,6 +35,7 @@ type sstmt =
   | SBreak
   | SContinue
   | SVarDecs of svar list
+  | SVarDec of svar
   | SObjCall of string * string * sexpr list
   | SCreateStruct of string * svar list list
 
