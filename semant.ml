@@ -69,10 +69,17 @@ let check (globals, functions) =
 
   let _ = find_func "main" in (* Ensure "main" is defined *)
 
+  let check prog =
+      let objects = prog.o
+      and functions = prog.f
+      and vars = prog.v
+  in
+
   let check_function func =
     (* Make sure no formals or locals are void or duplicates *)
     let formals' = check_binds "formal" func.formals in
     let locals' = check_vars "local" func.locals in
+
 
     (* Raise an exception if the given rvalue type cannot be assigned to
        the given lvalue type *)
@@ -243,11 +250,33 @@ let check (globals, functions) =
             | s :: ss         -> check_stmt s :: check_stmt_list ss
             | []              -> []
           in SBlock(check_stmt_list sl)
-      | VarDec (var) ->
+      | VarDec var -> let _ = check_expr snd var in SVarDec(var)
       | ObjCall(name, func, args) ->
+          let meth_err t = "Method " ^ string_of_fdecl fdecl ^ " does not exist " ^
+                           " in " ^ string_of_typ t
+          and t = type_of_identifier name
+          and f = if StringMap.find func (StringMap.find name symbols).methods then
+                  f else raise (Failure meth_err t)
+          and let formals_len = List.length f.formals
+          and _ = if formals_len != List.length args != then
+                  raise (Failure len_err formals_len) else args
+          in (t, SObjCall(name, func, args))
+
 (*
       | CreateStruct(s, var_l_l) ->
       | VarDecs(var_l)
       | Continue l ->
       | Break l ->
 *)
+
+    in (* body of check_function *)
+    { styp = func.typ;
+      sfname = func.fname;
+      sformals = formals';
+      slocals  = locals';
+      sbody = match check_stmt (Block func.body) with
+	SBlock(sl) -> sl
+      | _ -> let err = "internal error: block didn't become a block?"
+      in raise (Failure err)
+    }
+  in (globals', List.map check_function functions)

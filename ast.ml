@@ -66,6 +66,12 @@ type obj = {
 
 type program = var list list * func_decl list
 
+type prog = {
+  o : obj list;
+  v : var list list;
+  f : func_decl list;
+}
+
 (* Pretty-printing functions *)
 
 let string_of_op = function
