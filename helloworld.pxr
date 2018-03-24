@@ -1,0 +1,17 @@
+Int fps = 30;
+Void main() {
+    //Initializing 5 seconds of frames
+    Frame[] frames = new Frame[150];
+    
+    Pix ball = new Pix();
+    ball.makeEllipse(300, 300, [255, 255, 255]);
+    
+    //Place ball in middle of screen
+    Placement placeBall = new Placement(ball, 375, 375, 1, 1);
+    
+    for(Int i = 0; i < frames.length; i++) {
+        frames[i] = new Frame(750, 750);
+        frames[i].addPlacement(placeBall);
+    }
+    render(frames, fps);
+}
