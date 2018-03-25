@@ -47,19 +47,12 @@ type sfunc_decl = {
     sbody : sstmt list;
   }
 
-type sobj = {
-  styp: typ; (*Pix, Frame, Placement*)
-  soname: string;
-  sctor: fdecl;
-  sdecls: bind list;
-  smethods: func_decl list;
-}
-
 type sprogram = svar list list * sfunc_decl list
 
 (* Pretty-printing functions *)
 
-let rec string_of_sexpr = function
+let rec string_of_sexpr (t, e) =
+    "(" ^ string_of_typ t ^ " : " ^ (match e with
     SLiteral(l) -> string_of_int l
   | SFliteral(l) -> string_of_float l
   | SBoolLit(true) -> "true"
@@ -83,34 +76,35 @@ let rec string_of_sexpr = function
   | SAccessStruct(i1, i2) -> i1 ^ "." ^ i2
   | SPostIncrement(e) -> "(" ^ string_of_sexpr e ^ ")++"
   | SPostDecrement(e) -> "(" ^ string_of_sexpr e ^ ")--"
+    ) ^ ")"
 
 let string_of_svdecl ((t, id), value) =
   match value with
   | SNoexpr -> string_of_typ t ^ " " ^ id
-  | _ -> string_of_typ t ^ " " ^ id ^ " = " ^ string_of_sexpr value
+  | _ -> string_of_typ t ^ " " ^ id ^ " = " ^ string_of_sexpr (t, value)
 
 let string_of_svdecls (vars) = String.concat "," (List.map string_of_svdecl vars) ^
     if (List.length vars) > 0 then ";\n" else ""
 
 let rec string_of_sstmt = function
-    Block(stmts) ->
+    SBlock(stmts) ->
       "{\n" ^ String.concat "" (List.map string_of_sstmt stmts) ^ "}\n"
-  | Expr(expr) -> string_of_sexpr expr ^ ";\n";
-  | Return(expr) -> "return " ^ string_of_sexpr expr ^ ";\n";
-  | If(e, s, stmts, SBlock([])) -> "if (" ^ string_of_sexpr e ^ ")\n" ^ string_of_sstmt s
+  | SExpr(expr) -> string_of_sexpr expr ^ ";\n";
+  | SReturn(expr) -> "return " ^ string_of_sexpr expr ^ ";\n";
+  | SIf(e, s, stmts, SBlock([])) -> "if (" ^ string_of_sexpr e ^ ")\n" ^ string_of_sstmt s
       ^ String.concat "" (List.map string_of_sstmt stmts)
-  | If(e, s1, stmts, s2) ->  "if (" ^ string_of_sexpr e ^ ")\n" ^
+  | SIf(e, s1, stmts, s2) ->  "if (" ^ string_of_sexpr e ^ ")\n" ^
       string_of_sstmt s1 ^ String.concat "" (List.map string_of_sstmt stmts) ^ "else\n" ^ string_of_sstmt s2
-  | ElseIf(e, s) -> "else if (" ^ string_of_sexpr e ^ ")\n" ^ string_of_sstmt s
-  | For(e1, e2, e3, s) ->
+  | SElseIf(e, s) -> "else if (" ^ string_of_sexpr e ^ ")\n" ^ string_of_sstmt s
+  | SFor(e1, e2, e3, s) ->
       "for (" ^ string_of_sexpr e1  ^ " ; " ^ string_of_sexpr e2 ^ " ; " ^
       string_of_sexpr e3  ^ ") " ^ string_of_sstmt s
-  | While(e, s) -> "while (" ^ string_of_sexpr e ^ ") " ^ string_of_sstmt s
-  | Break -> "break;\n"
-  | Continue -> "continue;\n"
-  | VarDecs(vars) -> String.concat "," (List.map string_of_svdecl vars) ^ ";\n"
-  | ObjCall(o, f, el) -> o ^ "." ^ f ^ "(" ^ String.concat ", " (List.map string_of_sexpr el) ^ ");\n"
-  | CreateStruct(s, vdecls) -> "Struct " ^ s ^ "\n{\n" ^
+  | SWhile(e, s) -> "while (" ^ string_of_sexpr e ^ ") " ^ string_of_sstmt s
+  | SBreak -> "break;\n"
+  | SContinue -> "continue;\n"
+  | SVarDecs(vars) -> String.concat "," (List.map string_of_svdecl vars) ^ ";\n"
+  | SObjCall(o, f, el) -> o ^ "." ^ f ^ "(" ^ String.concat ", " (List.map string_of_sexpr el) ^ ");\n"
+  | SCreateStruct(s, vdecls) -> "Struct " ^ s ^ "\n{\n" ^
       String.concat "" (List.map string_of_svdecls vdecls) ^ "};\n"
 
 let string_of_sfdecl fdecl =
