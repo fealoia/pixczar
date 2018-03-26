@@ -8,7 +8,7 @@ Void main() {
     //Place ball in middle of screen
     Placement placeBall = new Placement(ball, 375, 375, 1, 1);
     
-    for(Int i = 0; i < frames.length; i++) {
+    for(Int i = 0; i < frames.length; i = i + 1) {
         frames[i] = new Frame(750, 750);
         frames[i].addPlacement(placeBall);
     }
