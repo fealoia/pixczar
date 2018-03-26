@@ -1,18 +1,3 @@
-(* Code generation: translate takes a semantically checked AST and
-produces LLVM IR
-
-LLVM tutorial: Make sure to read the OCaml version of the tutorial
-
-http://llvm.org/docs/tutorial/index.html
-
-Detailed documentation on the OCaml LLVM library:
-
-http://llvm.moe/
-http://llvm.moe/ocaml/
-
-*)
-
-(* We'll refer to Llvm and Ast constructs with module names *)
 module L = Llvm
 module A = Ast
 open Sast 
@@ -67,7 +52,13 @@ let translate (_, functions) =
     let rec expr builder ((_, e) : sexpr) = match e with
         (* 42  ----->  i32 42 *)
 	SLiteral i -> L.const_int i32_t i  
-        (* print(42)   ----->  %printf = call i32 (i8*, ...) @printf(<stuff>, i32 42) *)
+      | SFliteral l -> L.const_float_of_string_float_t l
+      | SBoolLit b -> L.const_int i1_t (if b then 1 else 0)
+      | SNoExpr -> L.const_int i32_t 0
+      | SId s -> L.build_load (lookup s) s builder 
+      | SAssign (s, e) -> let e' = expr builder e in
+          let _ = L.build_store e' (lookup s) builder 
+          in e'
       | SCall ("print", [e]) ->  
 	  L.build_call printf_func [| int_format_str ; (expr builder e) |]
 	    "printf" builder 
