@@ -39,13 +39,12 @@ let check (globals, functions) =
 
   (* Collect function declarations for built-in functions: no bodies *)
   let built_in_decls =
-    let add_bind map (name, ty) = StringMap.add name {
+    let add_bind map (name, typ, formal_vars) = StringMap.add name {
       typ = Void; fname = name;
-      formals = [(ty, "x")];
+      formals = formal_vars;
       locals = []; body = [] } map
-    in List.fold_left add_bind StringMap.empty [ ("print", Void);
-                                                 ("render", Void);
-                                                 ("getHash", Int) ]
+    in List.fold_left add_bind StringMap.empty [ ("render", Void,
+    [(Array(Frame), "frames"); (Int, "fps") ])]
   in
 
   (* Add function name to symbol table *)
@@ -77,7 +76,6 @@ let check (globals, functions) =
     let formals' = check_binds "formal" func.formals in
     let locals' = check_vars "local" func.locals in
 
-
     (* Raise an exception if the given rvalue type cannot be assigned to
        the given lvalue type *)
     let check_assign lvaluet rvaluet err =
@@ -86,9 +84,9 @@ let check (globals, functions) =
 
     (* Build local symbol table of variables for this function *)
     let symbols = List.fold_left (fun m (ty, name) -> StringMap.add name ty m)
-	                StringMap.empty ((List.map fst (List.map get_first globals')) 
-                        @ formals'
-                        @ (List.map fst (List.map get_first locals')) )
+	                StringMap.empty ((List.map fst (List.map get_first globals'))
+                        @ (List.map fst (List.map get_first locals'))
+                        @ formals')
     in
 
     (* Return a variable from our local symbol table *)
@@ -214,7 +212,7 @@ let check (globals, functions) =
               hd :: tl -> (Array(fst hd), SCreateArray(result))
             | _ -> (Array(Notyp), SCreateArray(result))
           in arr
-      | AccessArray(id, idx) as e -> (*ToDo: can only access through variable *)
+      | AccessArray(id, idx) -> (*ToDo: can only access through variable *)
           let id_err = "Illegal identifier " ^ id
           in let idx_err = "Illegal index " ^ string_of_int idx ^ " on
           identifier" ^ id
@@ -259,7 +257,27 @@ let check (globals, functions) =
             | s :: ss         -> check_stmt s :: check_stmt_list ss
             | []              -> []
           in SBlock(check_stmt_list sl)
-     (* | ObjCall(name, func, args) ->*)
+      | ObjCall(name, func, args) as s ->
+              (* ToDo: other object functions; cannot have null argument*)
+          let err = "illegal object function call " ^ string_of_stmt s in
+          let check_func func_params args = if List.length args !=
+              List.length func_params then raise (Failure(err)) else
+                let check_call (ft, _) e =
+                    let (et, e') = check_expr e
+                in (check_assign ft et err, e')
+             in List.map2 check_call func_params args
+          in let check_it = match (type_of_identifier name) with 
+              Pix -> if func != "makeEllipse" then raise (Failure(err)) else
+                  let args' = SObjCall(name, func, (check_func [(Int, "width"); (Int, "height"); (Array(Int),
+                  "rgb")] args))
+                  in let arr_size_check = match args with 
+                        x :: y :: z -> if List.length z != 3 then raise (Failure(err)) else args'
+                      | _ -> raise (Failure(err))
+                  in arr_size_check
+            | Array(Frame) -> if func != "addPlacement" then raise (Failure(err)) else
+                  SObjCall(name, func, check_func [(Placement, "place")] args)
+            | _ -> raise (Failure(err))
+          in check_it
       (*| VarDecs(vars) -> (*ToDo: multiple per line*)*)
 
       | If(b, s1, s2, s3) -> if true then raise (Failure ("If not yet
