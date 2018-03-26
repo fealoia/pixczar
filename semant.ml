@@ -105,8 +105,8 @@ let check (globals, functions) =
       | BoolLit   l -> (Bool, SBoolLit l)
       | StringLit l -> (String, SStringLit l)
       | Noexpr    l -> (Void, SNoexpr)
-      | Null      l -> (Null, Null) (* check this, I think we overloaded Null in ast *)
-      | Id        l -> (type_of_identifier s, SId s)
+      | Null      l -> (Null, SNull)
+      | Id        l -> (type_of_identifier l, SId l)
       | Assign(var, e) as ex ->
           let lt = type_of_identifier var
           and (rt, e') = check_expr e in
@@ -160,25 +160,31 @@ let check (globals, functions) =
           and typ_err index t1 t2  = "expected arg " ^ string_of_int index ^ " of " ^
                                      string_of_expr new_l ^ "to be of type " ^ t1 ^ ", got " ^
                                      string_of_typ t2 ^ "instead"
-          and check_pix args =
-            if List.length args != 0 then raise (Failure (len_err 0)) else args
-          and check_placement args =
-            if List.length args != 5 then raise (Failure (len_err 5)) else
+          and check_pix num =
+            if List.length num != 0 then raise (Failure (len_err 0)) else num
+          and check_placement num2 =
+            if List.length num2 != 5 then raise (Failure (len_err 5)) else num2
               (* if EACH PARAM IS NOT CORRECT TYPE then raise (Failure typ_err index t1 t2) *)
-              args
-          and check_frame args =
-            if List.length args != 2 then raise (Failure (len_err 2)) else
+          and check_frame num3 =
+            if List.length num3 != 2 then raise (Failure (len_err 2)) else num3
               (* check param types *)
-              args
           in let _ = match t with
               Pix       -> (t, SNew(t, check_pix args))
             | Placement -> (t, SNew(t, check_placement args))
             | Frame     -> (t, SNew(t, check_frame args))
-(* needed for deliverable
       | NewArray(t, size) as e ->
+          if size = Int then (t, SNewArray(t, size))
+          else raise (Failure ("expected type Int as Array size"))
       | CreateArray(args) as e ->
+          if args = Void then (Void, SCreateArray(Void))
+          else let rec check_args arguments=
+            match arguments with
+            |[n] -> if check_expr n then (type_of_identifier n, SCreateArray(type_of_identifier n))
+            |hd::tl -> if check_expr hd then check_args tl
+            in check_args args
+(* Still needs to be implemented *)
       | AccessArray(s, ind) as e ->
-*)
+
 (* not needed
       | SubArray(s, beg, end') as e ->
       | AccessStruct(s, field) as e ->
@@ -219,7 +225,7 @@ let check (globals, functions) =
             | []              -> []
           in SBlock(check_stmt_list sl)
 
-    in 
+    in
     let check_bool_expr e =
       let (t', e') = expr e
       and err = "expected Boolean expression in " ^ string_of_expr e
