@@ -1,4 +1,3 @@
-Int fps = 30;
 Void main() {
     //Initializing 5 seconds of frames
     Frame[] frames = new Frame[150];
@@ -13,5 +12,7 @@ Void main() {
         frames[i] = new Frame(750, 750);
         frames[i].addPlacement(placeBall);
     }
-    render(frames, fps);
+    
+    Int fps = 30;
+    render(frames, fps);*/
 }

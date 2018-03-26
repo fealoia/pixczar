@@ -120,7 +120,7 @@ expr:
   | BLIT             { BoolLit($1)            }
   | SLIT             { StringLit($1)          }
   | ID               { Id($1)                 }
-  | NULL             { Null                   }
+  | NULL             { NullLit                }
   | expr PLUS   expr { Binop($1, Add,   $3)   }
   | expr MINUS  expr { Binop($1, Sub,   $3)   }
   | expr TIMES  expr { Binop($1, Mult,  $3)   }
@@ -139,15 +139,15 @@ expr:
   | ID ASSIGN expr   { Assign($1, $3)         }
   | ID LPAREN args_opt RPAREN { Call($1, $3)  }
   | LPAREN expr RPAREN { $2                   }
-  | NEW nonprim_typ LPAREN args_opt RPAREN { New($2, $4)          }
-  | NEW nonprim_typ LBRACK LITERAL RBRACK  { NewArray($2, $4)     }
-  | NEW prim_typ LBRACK LITERAL RBRACK     { NewArray($2, $4)     }
-  | LBRACK args_opt RBRACK                 { CreateArray($2)      }
-  | ID LBRACK LITERAL RBRACK               { AccessArray($1, $3)  }
-  | ID LBRACK LITERAL COLON LITERAL RBRACK { SubArray($1, $3, $5) }
-  | ID DOT ID                              { AccessStruct($1, $3) }
-  | expr PLUS PLUS                         { PostIncrement($1)    }
-  | expr MINUS MINUS                       { PostDecrement($1)    }
+  | NEW nonprim_typ LPAREN args_opt RPAREN { New($2, $4)                    }
+  | NEW nonprim_typ LBRACK LITERAL RBRACK  { NewArray($2, $4)               }
+  | NEW prim_typ LBRACK LITERAL RBRACK     { NewArray($2, $4)               }
+  | LBRACK args_opt RBRACK                 { CreateArray($2)                }
+  | ID LBRACK LITERAL RBRACK               { AccessArray($1, $3)            }
+  | ID LBRACK LITERAL COLON LITERAL RBRACK { SubArray($1, $3, $5)           }
+  | ID DOT ID                              { AccessStruct($1, $3)           }
+  | expr PLUS PLUS                         { PostUnop($1, PostIncrement)    }
+  | expr MINUS MINUS                       { PostUnop($1, PostDecrement)    }
 
 args_opt:
     /* nothing */ { [] }

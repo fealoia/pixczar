@@ -19,19 +19,22 @@ let check (globals, functions) =
                     | _ -> binding :: checked
     in let _ = List.fold_left check_it [] (List.sort compare to_check)
        in to_check
-  in
+  in let get_first lst = match lst with 
+      hd :: tl -> hd
+    | _ -> ((Notyp, ""), Noexpr) (* Temporary *) in  
 
-  (* Check vars to see if duplicate or void type -- new thing someone check pls *)
-  let check_vars (kind : string) (to_check: var list) =
-    let to_check = List.map snd to_check
-    in let _ = List.fold_left check_it [] (List.sort compare to_check)
-       in to_check
+ (* Check vars to see if duplicate or void type *)
+ (* ToDo: multiple declarations on same line *)
+  let check_vars (kind : string) (to_check: var list list) =
+    let to_check_vars = List.map get_first to_check
+    in let to_check_vars = List.map fst to_check_vars
+      in let _ = check_binds kind to_check_vars
+    in to_check
   in
-
 
   (**** Checking Global Variables ****)
 
-  let globals' = check_binds "global" globals in
+  let globals' = check_vars "global" globals in
 
 
   (* Collect function declarations for built-in functions: no bodies *)
@@ -69,12 +72,6 @@ let check (globals, functions) =
 
   let _ = find_func "main" in (* Ensure "main" is defined *)
 
-  let check prog =
-      let objects = prog.o
-      and functions = prog.f
-      and vars = prog.v
-  in
-
   let check_function func =
     (* Make sure no formals or locals are void or duplicates *)
     let formals' = check_binds "formal" func.formals in
@@ -89,7 +86,9 @@ let check (globals, functions) =
 
     (* Build local symbol table of variables for this function *)
     let symbols = List.fold_left (fun m (ty, name) -> StringMap.add name ty m)
-	                StringMap.empty (globals' @ formals' @ (List.map snd locals') )
+	                StringMap.empty ((List.map fst (List.map get_first globals')) 
+                        @ formals'
+                        @ (List.map fst (List.map get_first locals')) )
     in
 
     (* Return a variable from our local symbol table *)
@@ -104,9 +103,9 @@ let check (globals, functions) =
       | Fliteral  l -> (Float, SFliteral l)
       | BoolLit   l -> (Bool, SBoolLit l)
       | StringLit l -> (String, SStringLit l)
-      | Noexpr    l -> (Void, SNoexpr)
-      | Null      l -> (Null, SNull)
-      | Id        l -> (type_of_identifier l, SId l)
+      | Noexpr      -> (Void, SNoexpr)
+      | NullLit     -> (Null, SNullLit)
+      | Id        s -> (type_of_identifier s, SId s)
       | Assign(var, e) as ex ->
           let lt = type_of_identifier var
           and (rt, e') = check_expr e in
@@ -122,12 +121,22 @@ let check (globals, functions) =
                                  string_of_uop op ^ string_of_typ t ^
                                  " in " ^ string_of_expr ex))
           in (ty, SUnop(op, (t, e')))
+      | PostUnop(e, op) as ex ->
+          let (t, e') = check_expr e in
+          let ty = match op with
+            PostIncrement when t = Int -> t
+          | PostDecrement when t = Int -> t
+          | _ -> raise (Failure ("illegal postfix unary operator " ^
+                                 string_of_typ t ^ " in " ^ string_of_expr ex ^
+                                 string_of_post_uop op))
+          in (ty, SPostUnop((t, e'), op))
       | Binop(e1, op, e2) as e ->
           let (t1, e1') = check_expr e1
           and (t2, e2') = check_expr e2 in
           (* All binary operators require operands of the same type *)
           let same = t1 = t2 in
           (* Determine expression type based on operator and operand types *)
+          (* ToDo: casting, additional types, mod *)
           let ty = match op with
             Add | Sub | Mult | Div when same && t1 = Int   -> Int
           | Add | Sub | Mult | Div when same && t1 = Float -> Float
@@ -157,88 +166,82 @@ let check (globals, functions) =
       | New(t, args) as new_l ->
           let len_err len = "expecting " ^ string_of_int len ^
                             " arguments in " ^ string_of_expr new_l
-          and typ_err index t1 t2  = "expected arg " ^ string_of_int index ^ " of " ^
-                                     string_of_expr new_l ^ "to be of type " ^ t1 ^ ", got " ^
-                                     string_of_typ t2 ^ "instead"
-          and check_pix num =
-            if List.length num != 0 then raise (Failure (len_err 0)) else num
-          and check_placement num2 =
-            if List.length num2 != 5 then raise (Failure (len_err 5)) else num2
-              (* if EACH PARAM IS NOT CORRECT TYPE then raise (Failure typ_err index t1 t2) *)
-          and check_frame num3 =
-            if List.length num3 != 2 then raise (Failure (len_err 2)) else num3
-              (* check param types *)
-          in let _ = match t with
-              Pix       -> (t, SNew(t, check_pix args))
-            | Placement -> (t, SNew(t, check_placement args))
-            | Frame     -> (t, SNew(t, check_frame args))
-      | NewArray(t, size) as e ->
-          if size = Int then (t, SNewArray(t, size))
-          else raise (Failure ("expected type Int as Array size"))
+          and check_arg ft e = 
+            let (et, e') = check_expr e in
+            let err = "illegal argument found " ^ string_of_typ et ^
+                      " expected " ^ string_of_typ ft ^ " in " ^ string_of_expr e
+            in (check_assign ft et err, e')
+          in let new_obj = match t with
+              Pix       -> let check_pix args = 
+                  if List.length args != 0 then raise (Failure (len_err 0)) else []
+                in (Pix, SNew(Pix, check_pix args))
+            | Placement -> let check_placement args = 
+                  if List.length args != 5 then raise (Failure (len_err 5)) else
+                    List.map2 check_arg [Pix; Int; Int; Int; Int] args
+                in (Placement, SNew(Placement, check_placement args))
+            | Frame     -> let check_frame args = 
+                  if List.length args != 2 then raise (Failure (len_err 2)) else
+                    List.map2 check_arg [Int; Int] args
+                in (Frame, SNew(Frame, check_frame args))
+            | _           -> raise (Failure ("illegal object name " ^
+                        string_of_typ t)) 
+          in new_obj
+      | NewArray(s, size) as e ->
+          (* ToDo: structs, matrices? *)
+          let arr = match s with 
+              Int       -> (Array(Int), SNewArray(Int, size)) 
+            | Float     -> (Array(Float), SNewArray(Float, size)) 
+            | Bool   -> (Array(Bool), SNewArray(Bool, size)) 
+            | String    -> (Array(String), SNewArray(String, size)) 
+            | Pix       -> (Array(Pix), SNewArray(Pix, size)) 
+            | Placement -> (Array(Placement), SNewArray(Placement, size)) 
+            | Frame     -> (Array(Frame), SNewArray(Frame, size)) 
+            | _           -> raise (Failure ("illegal array type in " ^
+                                string_of_expr e))
+        in if size > -1 then arr else 
+            raise (Failure ("illegal array size in " ^ string_of_expr e))
       | CreateArray(args) as e ->
-          if args = Void then (Void, SCreateArray(Void))
-          else let rec check_args arguments=
-            match arguments with
-            |[n] -> if check_expr n then (type_of_identifier n, SCreateArray(type_of_identifier n))
-            |hd::tl -> if check_expr hd then check_args tl
-            in check_args args
-(* Still needs to be implemented *)
-      | AccessArray(s, ind) as e ->
-
-(* not needed
-      | SubArray(s, beg, end') as e ->
-      | AccessStruct(s, field) as e ->
-      | PostIncrement(e1) as e ->
-      | PostDecrement(e1) as e ->
-*)
-
+          let err ext et = "illegal expression found " ^ string_of_typ et ^
+                "expected " ^ string_of_typ ext ^ " in " ^ string_of_expr e 
+          in let check_types sexprs expr =
+            let (et, e') = check_expr expr in 
+              match sexprs with 
+                hd :: tl -> if (fst hd) = et then (et, e') :: sexprs else raise
+                        (Failure (err (fst hd) et))
+                | _ -> (et, e') :: sexprs
+          in let result = List.fold_left check_types [] args in 
+          let arr = match result with
+              hd :: tl -> (Array(fst hd), SCreateArray(result))
+            | _ -> (Array(Notyp), SCreateArray(result))
+          in arr
+      | AccessArray(id, idx) as e -> (*ToDo: can only access through variable *)
+          let id_err = "Illegal identifier " ^ id
+          in let idx_err = "Illegal index " ^ string_of_int idx ^ " on
+          identifier" ^ id
+          in let check_access = match (type_of_identifier id) with 
+              Array(typ) -> if idx < 0 then raise (Failure (idx_err)) else
+                  (typ, SAccessArray(id, idx))
+            | _ -> raise (Failure (id_err))
+          in check_access
+      | SubArray(s, beg, end') -> if true then raise (Failure ("SubArray not yet
+                implemented")) else (Notyp, SSubArray("", 0, 0))
+      | AccessStruct(s, field) -> if true then raise (Failure ("AccessStructure not yet
+                implemented")) else (Notyp, SSubArray("", 0, 0))
     in
 
     let check_bool_expr e =
-      let (t', e') = expr e
+      let (t', e') = check_expr e
       and err = "expected Boolean expression in " ^ string_of_expr e
       in if t' != Bool then raise (Failure err) else (t', e')
     in
-
-    (* Return a semantically-checked statement i.e. containing sexprs
-       DOUBLE CHECK THIS *)
-    let rec check_stmt = function
-        Expr e -> SExpr (expr e)
-      | If(p, b1, b2) -> SIf(check_bool_expr p, check_stmt b1, check_stmt b2)
-      | For(e1, e2, e3, st) ->
-	  SFor(expr e1, check_bool_expr e2, expr e3, check_stmt st)
-      | While(p, s) -> SWhile(check_bool_expr p, check_stmt s)
-      | Return e -> let (t, e') = expr e in
-        if t = func.typ then SReturn (t, e')
-        else raise (
-	  Failure ("return gives " ^ string_of_typ t ^ " expected " ^
-		   string_of_typ func.typ ^ " in " ^ string_of_expr e))
-
-	    (* A block is correct if each statement is correct and nothing
-	       follows any Return statement.  Nested blocks are flattened. *)
-      | Block sl ->
-          let rec check_stmt_list = function
-              [Return _ as s] -> [check_stmt s]
-            | Return _ :: _   -> raise (Failure "nothing may follow a return")
-            | Block sl :: ss  -> check_stmt_list (sl @ ss) (* Flatten blocks *)
-            | s :: ss         -> check_stmt s :: check_stmt_list ss
-            | []              -> []
-          in SBlock(check_stmt_list sl)
-
-    in
-    let check_bool_expr e =
-      let (t', e') = expr e
-      and err = "expected Boolean expression in " ^ string_of_expr e
-      in if t' != Bool then raise (Failure err) else (t', e')
-    in
-
 
     (* Return a semantically-checked statement i.e. containing sexprs *)
     let rec check_stmt = function
         Expr e -> SExpr (check_expr e)
-      | If(p, b1, b2) -> SIf(check_bool_expr p, check_stmt b1, check_stmt b2)
+     (* | If(p, b1, b2) -> SIf(check_bool_expr p, check_stmt b1, check_stmt
+      * b2)*)
       | For(e1, e2, e3, st) ->
-	  SFor(expr e1, check_bool_expr e2, expr e3, check_stmt st)
+	  SFor(check_expr e1, check_bool_expr e2, check_expr e3, check_stmt st)
       | While(p, s) -> SWhile(check_bool_expr p, check_stmt s)
       | Return e -> let (t, e') = check_expr e in
         if t = func.typ then SReturn (t, e')
@@ -256,33 +259,37 @@ let check (globals, functions) =
             | s :: ss         -> check_stmt s :: check_stmt_list ss
             | []              -> []
           in SBlock(check_stmt_list sl)
-      | VarDec var -> let _ = check_expr snd var in SVarDec(var)
-      | ObjCall(name, func, args) ->
-          let meth_err t = "Method " ^ string_of_fdecl fdecl ^ " does not exist " ^
-                           " in " ^ string_of_typ t
-          and t = type_of_identifier name
-          and f = if StringMap.find func (StringMap.find name symbols).methods then
-                  f else raise (Failure (meth_err t))
-          and formals_len = List.length f.formals
-          and _ = if formals_len != List.length args then
-                  raise (Failure (len_err formals_len)) else args
-          in (t, SObjCall(name, func, args))
+     (* | ObjCall(name, func, args) ->*)
+      (*| VarDecs(vars) -> (*ToDo: multiple per line*)*)
 
-(*
-      | CreateStruct(s, var_l_l) ->
-      | VarDecs(var_l)
-      | Continue l ->
-      | Break l ->
-*)
-
+      | If(b, s1, s2, s3) -> if true then raise (Failure ("If not yet
+                implemented")) else SIf((Notyp, SNoexpr), SExpr(Notyp, SNoexpr),
+                [SExpr(Notyp, SNoexpr)], SExpr(Notyp, SNoexpr))
+      | ElseIf(b, s1) -> if true then raise (Failure ("ElseIf not yet
+                implemented")) else SElseIf((Notyp, SNoexpr), SExpr(Notyp,
+                SNoexpr))
+      | CreateStruct(s, field) -> if true then raise (Failure ("CreateStruct not yet
+                implemented")) else SCreateStruct("", [[((Notyp, ""), (Notyp,
+                SNoexpr))]])
+      | VarDecs(field) -> if true then raise (Failure ("VarDecs not yet
+                implemented")) else SVarDecs([((Notyp, ""), (Notyp, SNoexpr))])
+      | Continue -> SContinue
+      | Break -> SBreak
+   
+    in let check_var_expr (to_check : var list list) = 
+        let check_accum accum (bnd, ex) = (bnd, check_expr ex) :: accum
+        in List.rev (List.fold_left check_accum [] (List.map get_first to_check))
+    
     in (* body of check_function *)
     { styp = func.typ;
       sfname = func.fname;
       sformals = formals';
-      slocals  = locals';
+      slocals  = check_var_expr locals';
       sbody = match check_stmt (Block func.body) with
 	SBlock(sl) -> sl
       | _ -> let err = "internal error: block didn't become a block?"
       in raise (Failure err)
     }
-in (globals', List.map check_function functions)
+
+  (* ToDo: global variables *)
+  in ([], List.map check_function functions)

@@ -3,10 +3,10 @@ type op = Add | Sub | Mult | Div | Equal | Neq | Less | Leq | Greater | Geq |
 
 type uop = Neg | Not
 
-type typ = Int | Bool | Float | String | Void | Pix | Placement | Frame | Notyp |
-           Array of typ | Struct of string
+type post_uop = PostIncrement | PostDecrement
 
-type null = Null
+type typ = Int | Bool | Float | String | Void | Pix | Placement | Frame | Notyp |
+           Array of typ | Struct of string | Null 
 
 type expr =
     Literal of int
@@ -16,18 +16,17 @@ type expr =
   | Id of string
   | Binop of expr * op * expr
   | Unop of uop * expr
+  | PostUnop of expr * post_uop
   | Assign of string * expr
   | Call of string * expr list
   | Noexpr
-  | Null
+  | NullLit 
   | New of typ * expr list
   | NewArray of typ * int
   | CreateArray of expr list
   | SubArray of string * int * int
   | AccessArray of string * int
   | AccessStruct of string * string
-  | PostIncrement of expr
-  | PostDecrement of expr
 
 type bind = typ * string
 
@@ -38,13 +37,12 @@ type stmt =
   | Expr of expr
   | Return of expr
   | If of expr * stmt * stmt list * stmt
-  | ElseIf of expr * stmt
+  | ElseIf of expr * stmt 
   | For of expr * expr * expr * stmt
   | While of expr * stmt
-  | Break
+  | Break 
   | Continue
   | VarDecs of var list
-  | VarDec of var
   | ObjCall of string * string * expr list
   | CreateStruct of string * var list list
 
@@ -52,25 +50,11 @@ type func_decl = {
     typ : typ;
     fname : string;
     formals : bind list;
-    locals : var list;
+    locals : var list list;
     body : stmt list;
   }
 
-type obj = {
-  typ: typ; (*Pix, Frame, Placement*)
-  oname: string;
-  ctor: fdecl;
-  decls: bind list;
-  methods: func_decl list;
-}
-
 type program = var list list * func_decl list
-
-type prog = {
-  o : obj list;
-  v : var list list;
-  f : func_decl list;
-}
 
 (* Pretty-printing functions *)
 
@@ -93,6 +77,10 @@ let string_of_uop = function
     Neg -> "-"
   | Not -> "!"
 
+let string_of_post_uop = function
+    PostIncrement-> "++"
+  | PostDecrement-> "--"
+
 let rec string_of_typ = function
     Int -> "Int"
   | Bool -> "Boolean"
@@ -105,6 +93,7 @@ let rec string_of_typ = function
   | Notyp -> ""
   | Array(t) -> string_of_typ t ^ "[]"
   | Struct(s) -> "Struct " ^ s
+  | Null -> "Null"
 
 let rec string_of_expr = function
     Literal(l) -> string_of_int l
@@ -116,11 +105,12 @@ let rec string_of_expr = function
   | Binop(e1, o, e2) ->
       string_of_expr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_expr e2
   | Unop(o, e) -> string_of_uop o ^ string_of_expr e
+  | PostUnop(e, o) -> string_of_expr e ^ string_of_post_uop o
   | Assign(v, e) -> v ^ " = " ^ string_of_expr e
   | Call(f, el) ->
       f ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ")"
   | Noexpr -> ""
-  | Null -> "null"
+  | NullLit -> "null"
   | New(t, el) ->
      "new " ^ string_of_typ t ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ")"
   | CreateArray(el) -> "[" ^ String.concat "," (List.map string_of_expr el) ^ "]"
@@ -128,10 +118,8 @@ let rec string_of_expr = function
   | AccessArray(id, i) -> id ^ "[" ^ string_of_int i ^ "]"
   | NewArray(t, i) -> "new " ^ string_of_typ t ^ "[" ^ string_of_int i ^ "]"
   | AccessStruct(i1, i2) -> i1 ^ "." ^ i2
-  | PostIncrement(e) -> "(" ^ string_of_expr e ^ ")++"
-  | PostDecrement(e) -> "(" ^ string_of_expr e ^ ")--"
 
-let string_of_vdecl ((t, id), value) =
+let string_of_vdecl ((t, id), value) = 
   match value with
   | Noexpr -> string_of_typ t ^ " " ^ id
   | _ -> string_of_typ t ^ " " ^ id ^ " = " ^ string_of_expr value
@@ -145,7 +133,7 @@ let rec string_of_stmt = function
   | Expr(expr) -> string_of_expr expr ^ ";\n";
   | Return(expr) -> "return " ^ string_of_expr expr ^ ";\n";
   | If(e, s, stmts, Block([])) -> "if (" ^ string_of_expr e ^ ")\n" ^ string_of_stmt s
-      ^ String.concat "" (List.map string_of_stmt stmts)
+      ^ String.concat "" (List.map string_of_stmt stmts) 
   | If(e, s1, stmts, s2) ->  "if (" ^ string_of_expr e ^ ")\n" ^
       string_of_stmt s1 ^ String.concat "" (List.map string_of_stmt stmts) ^ "else\n" ^ string_of_stmt s2
   | ElseIf(e, s) -> "else if (" ^ string_of_expr e ^ ")\n" ^ string_of_stmt s
@@ -157,8 +145,8 @@ let rec string_of_stmt = function
   | Continue -> "continue;\n"
   | VarDecs(vars) -> String.concat "," (List.map string_of_vdecl vars) ^ ";\n"
   | ObjCall(o, f, el) -> o ^ "." ^ f ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ");\n"
-  | CreateStruct(s, vdecls) -> "Struct " ^ s ^ "\n{\n" ^
-      String.concat "" (List.map string_of_vdecls vdecls) ^ "};\n"
+  | CreateStruct(s, vdecls) -> "Struct " ^ s ^ "\n{\n" ^ 
+      String.concat "" (List.map string_of_vdecls vdecls) ^ "};\n" 
 
 let string_of_fdecl fdecl =
   string_of_typ fdecl.typ ^ " " ^

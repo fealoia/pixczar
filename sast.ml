@@ -9,10 +9,11 @@ and sx =
   | SId of string
   | SBinop of sexpr * op * sexpr
   | SUnop of uop * sexpr
+  | SPostUnop of sexpr * post_uop
   | SAssign of string * sexpr
   | SCall of string * sexpr list
   | SNoexpr
-  | SNull
+  | SNullLit
   | SNew of typ * sexpr list
   | SNewArray of typ * int
   | SCreateArray of sexpr list
@@ -35,7 +36,6 @@ type sstmt =
   | SBreak
   | SContinue
   | SVarDecs of svar list
-  | SVarDec of svar
   | SObjCall of string * string * sexpr list
   | SCreateStruct of string * svar list list
 
@@ -62,11 +62,12 @@ let rec string_of_sexpr (t, e) =
   | SBinop(e1, o, e2) ->
       string_of_sexpr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_sexpr e2
   | SUnop(o, e) -> string_of_uop o ^ string_of_sexpr e
+  | SPostUnop(e, o) -> string_of_sexpr e ^ string_of_post_uop o
   | SAssign(v, e) -> v ^ " = " ^ string_of_sexpr e
   | SCall(f, el) ->
       f ^ "(" ^ String.concat ", " (List.map string_of_sexpr el) ^ ")"
   | SNoexpr -> ""
-  | SNull -> "null"
+  | SNullLit -> "null"
   | SNew(t, el) ->
      "new " ^ string_of_typ t ^ "(" ^ String.concat ", " (List.map string_of_sexpr el) ^ ")"
   | SCreateArray(el) -> "[" ^ String.concat "," (List.map string_of_sexpr el) ^ "]"
@@ -78,10 +79,10 @@ let rec string_of_sexpr (t, e) =
   | SPostDecrement(e) -> "(" ^ string_of_sexpr e ^ ")--"
     ) ^ ")"
 
-let string_of_svdecl ((t, id), value) =
+let string_of_svdecl ((t1, id), (t2, value)) =
   match value with
-  | SNoexpr -> string_of_typ t ^ " " ^ id
-  | _ -> string_of_typ t ^ " " ^ id ^ " = " ^ string_of_sexpr (t, value)
+  | SNoexpr -> string_of_typ t1 ^ " " ^ id
+  | _ -> string_of_typ t1 ^ " " ^ id ^ " = " ^ string_of_sexpr (t1, value)
 
 let string_of_svdecls (vars) = String.concat "," (List.map string_of_svdecl vars) ^
     if (List.length vars) > 0 then ";\n" else ""
