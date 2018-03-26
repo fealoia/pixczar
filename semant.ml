@@ -19,9 +19,9 @@ let check (globals, functions) =
                     | _ -> binding :: checked
     in let _ = List.fold_left check_it [] (List.sort compare to_check)
        in to_check
-  in let get_first lst = match lst with 
+  in let get_first lst = match lst with
       hd :: tl -> hd
-    | _ -> ((Notyp, ""), Noexpr) (* Temporary *) in  
+    | _ -> ((Notyp, ""), Noexpr) (* Temporary *) in
 
  (* Check vars to see if duplicate or void type *)
  (* ToDo: multiple declarations on same line *)
@@ -86,7 +86,7 @@ let check (globals, functions) =
 
     (* Build local symbol table of variables for this function *)
     let symbols = List.fold_left (fun m (ty, name) -> StringMap.add name ty m)
-	                StringMap.empty ((List.map fst (List.map get_first globals')) 
+	                StringMap.empty ((List.map fst (List.map get_first globals'))
                         @ formals'
                         @ (List.map fst (List.map get_first locals')) )
     in
@@ -166,50 +166,50 @@ let check (globals, functions) =
       | New(t, args) as new_l ->
           let len_err len = "expecting " ^ string_of_int len ^
                             " arguments in " ^ string_of_expr new_l
-          and check_arg ft e = 
+          and check_arg ft e =
             let (et, e') = check_expr e in
             let err = "illegal argument found " ^ string_of_typ et ^
                       " expected " ^ string_of_typ ft ^ " in " ^ string_of_expr e
             in (check_assign ft et err, e')
           in let new_obj = match t with
-              Pix       -> let check_pix args = 
+              Pix       -> let check_pix args =
                   if List.length args != 0 then raise (Failure (len_err 0)) else []
                 in (Pix, SNew(Pix, check_pix args))
-            | Placement -> let check_placement args = 
+            | Placement -> let check_placement args =
                   if List.length args != 5 then raise (Failure (len_err 5)) else
                     List.map2 check_arg [Pix; Int; Int; Int; Int] args
                 in (Placement, SNew(Placement, check_placement args))
-            | Frame     -> let check_frame args = 
+            | Frame     -> let check_frame args =
                   if List.length args != 2 then raise (Failure (len_err 2)) else
                     List.map2 check_arg [Int; Int] args
                 in (Frame, SNew(Frame, check_frame args))
             | _           -> raise (Failure ("illegal object name " ^
-                        string_of_typ t)) 
+                        string_of_typ t))
           in new_obj
       | NewArray(s, size) as e ->
           (* ToDo: structs, matrices? *)
-          let arr = match s with 
-              Int       -> (Array(Int), SNewArray(Int, size)) 
-            | Float     -> (Array(Float), SNewArray(Float, size)) 
-            | Bool   -> (Array(Bool), SNewArray(Bool, size)) 
-            | String    -> (Array(String), SNewArray(String, size)) 
-            | Pix       -> (Array(Pix), SNewArray(Pix, size)) 
-            | Placement -> (Array(Placement), SNewArray(Placement, size)) 
-            | Frame     -> (Array(Frame), SNewArray(Frame, size)) 
+          let arr = match s with
+              Int       -> (Array(Int), SNewArray(Int, size))
+            | Float     -> (Array(Float), SNewArray(Float, size))
+            | Bool   -> (Array(Bool), SNewArray(Bool, size))
+            | String    -> (Array(String), SNewArray(String, size))
+            | Pix       -> (Array(Pix), SNewArray(Pix, size))
+            | Placement -> (Array(Placement), SNewArray(Placement, size))
+            | Frame     -> (Array(Frame), SNewArray(Frame, size))
             | _           -> raise (Failure ("illegal array type in " ^
                                 string_of_expr e))
-        in if size > -1 then arr else 
+        in if size > -1 then arr else
             raise (Failure ("illegal array size in " ^ string_of_expr e))
       | CreateArray(args) as e ->
           let err ext et = "illegal expression found " ^ string_of_typ et ^
-                "expected " ^ string_of_typ ext ^ " in " ^ string_of_expr e 
+                "expected " ^ string_of_typ ext ^ " in " ^ string_of_expr e
           in let check_types sexprs expr =
-            let (et, e') = check_expr expr in 
-              match sexprs with 
+            let (et, e') = check_expr expr in
+              match sexprs with
                 hd :: tl -> if (fst hd) = et then (et, e') :: sexprs else raise
                         (Failure (err (fst hd) et))
                 | _ -> (et, e') :: sexprs
-          in let result = List.fold_left check_types [] args in 
+          in let result = List.fold_left check_types [] args in
           let arr = match result with
               hd :: tl -> (Array(fst hd), SCreateArray(result))
             | _ -> (Array(Notyp), SCreateArray(result))
@@ -218,7 +218,7 @@ let check (globals, functions) =
           let id_err = "Illegal identifier " ^ id
           in let idx_err = "Illegal index " ^ string_of_int idx ^ " on
           identifier" ^ id
-          in let check_access = match (type_of_identifier id) with 
+          in let check_access = match (type_of_identifier id) with
               Array(typ) -> if idx < 0 then raise (Failure (idx_err)) else
                   (typ, SAccessArray(id, idx))
             | _ -> raise (Failure (id_err))
@@ -271,15 +271,24 @@ let check (globals, functions) =
       | CreateStruct(s, field) -> if true then raise (Failure ("CreateStruct not yet
                 implemented")) else SCreateStruct("", [[((Notyp, ""), (Notyp,
                 SNoexpr))]])
-      | VarDecs(field) -> if true then raise (Failure ("VarDecs not yet
-                implemented")) else SVarDecs([((Notyp, ""), (Notyp, SNoexpr))])
+      | VarDecs(field) -> let (b, e) = get_first field
+                          in let t = fst b
+                             and s = snd b
+                             in match StringMap.find_opt s symbols with
+                                      None -> let symbols = StringMap.add s symbols
+                                              in let (t2, _) = check_expr e
+                                                 in if t != t2 then raise ( Failure (
+                                                  "LHS type of " ^ string_of_typ t ^ " not the same as " ^
+                                                  "RHS type of " ^ string_of_typ t2 )) else (t, SVarDecs(field))
+                                    | Some -> raise ( Failure ("Duplicate variable declaration " ^ s))
+
       | Continue -> SContinue
       | Break -> SBreak
-   
-    in let check_var_expr (to_check : var list list) = 
+
+    in let check_var_expr (to_check : var list list) =
         let check_accum accum (bnd, ex) = (bnd, check_expr ex) :: accum
         in List.rev (List.fold_left check_accum [] (List.map get_first to_check))
-    
+
     in (* body of check_function *)
     { styp = func.typ;
       sfname = func.fname;
