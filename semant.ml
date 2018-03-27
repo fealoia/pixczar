@@ -106,9 +106,9 @@ let check (globals, functions) =
           let (map, t_le, le') = check_expr le map
           in let err = "illegal assignment " ^ string_of_typ t_le ^ " = " ^
             string_of_typ rt ^ " in " ^ string_of_expr ex
-          in let type_check = match e' with 
+          in let type_check = match le' with
               SId(s) -> (map, check_assign t_le rt err, SAssign((map, t_le, le'), (map, rt, e')))
-            | SAccessArray(id, idx) -> 
+            | SAccessArray(id, idx) ->
                     (map, check_assign t_le rt err, SAssign((map, t_le, le'), (map, rt, e')))
             | _ -> raise (Failure(err)) in type_check
       | Unop(op, e) as ex ->
@@ -236,7 +236,7 @@ let check (globals, functions) =
     let rec check_stmt e map= match e with
         Expr e -> (map, SExpr (check_expr e map))
       | If(w,x,y,z) -> raise (Failure("not yet implemented"))
-      | ElseIf(x,y) -> raise (Failure("not yet implemented")) 
+      | ElseIf(x,y) -> raise (Failure("not yet implemented"))
       | CreateStruct(x,y) -> raise (Failure("not yet implemented"))
       | For(e1, e2, e3, st) -> let (x,y,z) = check_expr e1 map in
                                let (x', y',z') = check_bool_expr e2 x in
@@ -286,19 +286,18 @@ let check (globals, functions) =
       | VarDecs(field) -> let (b, e) = get_first field
                           in let t = fst b
                              and s = snd b
-                             in (match StringMap.find_opt s map with
-                                      None -> let new_symbols = StringMap.add s t map
-                                              in let (map, t2, _) = check_expr e new_symbols
-                                                 in if t <> t2 then raise ( Failure (
-                                                  "LHS type of " ^ string_of_typ t ^ " not the same as " ^
-                                                  "RHS type of " ^ string_of_typ t2 )) else (new_symbols, SVarDecs([(b, check_expr e new_symbols)]))
-                                    | Some(x) -> raise ( Failure ("Duplicate variable declaration " ^ s)))
+                             in (if StringMap.mem s map then raise ( Failure ("Duplicate variable declaration " ^ s))
+                                 else let new_symbols = StringMap.add s t map
+                                      in let (map, t2, _) = check_expr e new_symbols
+                                         in if t <> t2 then raise ( Failure (
+                                           "LHS type of " ^ string_of_typ t ^ " not the same as " ^
+                                           "RHS type of " ^ string_of_typ t2 )) else (new_symbols, SVarDecs([(b, check_expr e new_symbols)])))
 
       | Continue -> (map, SContinue)
       | Break -> (map, SBreak)
 
     in let map_to_svar id typ resultlist = ((typ, id), (StringMap.empty, typ, (*ToDo: sloppy *)
-    SNoexpr)) :: resultlist 
+    SNoexpr)) :: resultlist
 
     in let sbody_stmt = check_stmt (Block func.body) symbols
 
@@ -307,7 +306,7 @@ let check (globals, functions) =
       sfname = func.fname;
       sformals = formals';
       slocals = StringMap.fold map_to_svar (fst sbody_stmt) [];
-      sbody = match sbody_stmt with 
+      sbody = match sbody_stmt with
 	(_ , SBlock(sl)) -> sl
       | _ -> let err = "internal error: block didn't become a block?"
       in raise (Failure err)
