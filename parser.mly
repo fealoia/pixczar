@@ -96,7 +96,7 @@ stmt:
                                               { If($3, $5, List.rev $6, Block([])) }
   | IF LPAREN expr RPAREN stmt elseif_list ELSE stmt
                                               { If($3, $5, List.rev $6, $8)        }
-  | FOR LPAREN expr_opt SEMI expr SEMI expr_opt RPAREN stmt
+  | FOR LPAREN expr_opt SEMI expr_opt SEMI expr_opt RPAREN stmt
                                               { For($3, $5, $7, $9)                }
   | WHILE LPAREN expr RPAREN stmt             { While($3, $5)                      }
   | BREAK SEMI                                { Break                              }

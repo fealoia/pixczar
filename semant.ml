@@ -90,9 +90,9 @@ let check (globals, functions) =
     in
 
     (* Return a variable from our local symbol table *)
-    let type_of_identifier s =
-      try StringMap.find s symbols
-      with Not_found -> raise (Failure ("undeclared identifier " ^ s))
+    let type_of_identifier s map =
+      try StringMap.find s map
+      with Not_found -> raise (Failure (string_of_bool (StringMap.is_empty map) ^ s))
     in
 
     (* Return a semantically-checked expression, i.e., with a type *)
@@ -103,9 +103,9 @@ let check (globals, functions) =
       | StringLit l -> (map, String, SStringLit l)
       | Noexpr      -> (map, Void, SNoexpr)
       | NullLit     -> (map, Null, SNullLit)
-      | Id        s -> (map, type_of_identifier s, SId s)
+      | Id        s -> (map, type_of_identifier s map, SId s)
       | Assign(var, e) as ex ->
-          let lt = type_of_identifier var
+          let lt = type_of_identifier var map
           and (map, rt, e') = check_expr e map in
           let err = "illegal assignment " ^ string_of_typ lt ^ " = " ^
             string_of_typ rt ^ " in " ^ string_of_expr ex
@@ -216,7 +216,7 @@ let check (globals, functions) =
           let id_err = "Illegal identifier " ^ id
           in let idx_err = "Illegal index " ^ string_of_int idx ^ " on
           identifier" ^ id
-          in let check_access = match (type_of_identifier id) with
+          in let check_access = match (type_of_identifier id map) with
               Array(typ) -> if idx < 0 then raise (Failure (idx_err)) else
                   (map, typ, SAccessArray(id, idx))
             | _ -> raise (Failure (id_err))
@@ -237,8 +237,13 @@ let check (globals, functions) =
     let rec check_stmt e map= match e with
         Expr e -> (map, SExpr (check_expr e map))
      (* | If(p, b1, b2) -> (map, SIf(check_bool_expr p map, check_stmt b1 map, check_stmt b2 map))*)
-      | For(e1, e2, e3, st) ->
-	  (map, SFor(check_expr e1 map, check_bool_expr e2 map, check_expr e3 map, check_stmt st map))
+
+
+      | For(e1, e2, e3, st) -> let (x,y,z) = check_expr e1 map in
+                               let (x', y',z') = check_bool_expr e2 x in
+                               let (x'',y'',z'') = check_expr e3 x' in
+      	  (x'', SFor((x,y,z), (x',y',z'), (x'',y'',z''), check_stmt st x''))
+
       | While(p, s) -> (map, SWhile(check_bool_expr p map, check_stmt s map))
       | Return e -> let (map, t, e') = check_expr e map in
         if t = func.typ then (map, SReturn (map, t, e'))
@@ -249,13 +254,13 @@ let check (globals, functions) =
 	    (* A block is correct if each statement is correct and nothing
 	       follows any Return statement.  Nested blocks are flattened. *)
       | Block sl ->
-          let rec check_stmt_list = function
+          let rec check_stmt_list e map = match e with
               [Return _ as s] -> [check_stmt s map]
             | Return _ :: _   -> raise (Failure "nothing may follow a return")
-            | Block sl :: ss  -> check_stmt_list (sl @ ss) (* Flatten blocks *)
-            | s :: ss         -> check_stmt s map :: check_stmt_list ss
+            | Block sl :: ss  -> check_stmt_list (sl @ ss) map (* Flatten blocks *)
+            | s :: ss         -> let (x,y) = check_stmt s map in (x,y) ::check_stmt_list ss x
             | []              -> []
-          in (map, SBlock(check_stmt_list sl))
+          in (map, SBlock(check_stmt_list sl map))
       | ObjCall(name, func, args) as s ->
               (* ToDo: other object functions; cannot have null argument*)
           let err = "illegal object function call " ^ string_of_stmt s in
@@ -265,15 +270,15 @@ let check (globals, functions) =
                     let (map, et, e') = check_expr e map
                 in (map, check_assign ft et err, e')
              in List.map2 check_call func_params args
-          in let check_it = match (type_of_identifier name) with
-              Pix -> if func != "makeEllipse" then raise (Failure(err)) else
+          in let check_it = match (type_of_identifier name map) with
+              Pix -> if func <> "makeEllipse" then raise (Failure(err)) else
                   let args' = (map, SObjCall(name, func, (check_func [(Int, "width"); (Int, "height"); (Array(Int),
                   "rgb")] args)))
                   in let arr_size_check = match args with
-                        x :: y :: z -> if List.length z != 3 then raise (Failure(err)) else args'
+                        x :: y :: CreateArray(z) :: [] -> if List.length z != 3 then raise (Failure(err)) else args'
                       | _ -> raise (Failure(err))
                   in arr_size_check
-            | Array(Frame) -> if func != "addPlacement" then raise (Failure(err)) else
+            | Array(Frame) -> if func <> "addPlacement" then raise (Failure(err)) else
                   (map, SObjCall(name, func, check_func [(Placement, "place")] args))
             | _ -> raise (Failure(err))
           in check_it
