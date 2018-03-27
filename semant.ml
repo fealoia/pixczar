@@ -106,7 +106,11 @@ let check (globals, functions) =
           let (map, t_le, le') = check_expr le map
           in let err = "illegal assignment " ^ string_of_typ t_le ^ " = " ^
             string_of_typ rt ^ " in " ^ string_of_expr ex
-          in (map, check_assign t_le rt err, SAssign((map, t_le, le'), (map, rt, e')))
+          in match t_le with 
+              Id -> (map, check_assign t_le rt err, SAssign((map, t_le, le'), (map, rt, e')))
+            | AccessArray(id, idx) -> 
+                    (map, check_assign t_le rt err, SAssign((map, t_le, le'), (map, rt, e')))
+            | _ -> raise (Failure(err))
       | Unop(op, e) as ex ->
           let (map, t, e') = check_expr e map in
           let ty = match op with

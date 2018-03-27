@@ -6,7 +6,7 @@ module StringMap = Map.Make(String)
 
 (* Code Generation from the SAST. Returns an LLVM module if successful,
    throws an exception if something is wrong. *)
-let translate (_, functions) =
+let translate (globals, functions) =
   let context    = L.global_context () in
   (* Add types to the context so we can use them in our LLVM code *)
   let i32_t      = L.i32_type    context
@@ -31,13 +31,16 @@ let translate (_, functions) =
     | A.Frame ->*)
     | t -> raise (Failure ("Type " ^ A.string_of_typ t ^ " not implemented yet"))
   in
-
-  let global_var m (t, n) =
+  
+  (* Declare each global variable; remember its value in a map *)
+  let global_vars : L.llvalue StringMap.t =
+    let global_var m (t, n) = 
       let init = match t with
-      A.Float -> L.const_float (ltype_of_typ t) 0.0
-    | _ -> L.const_int (ltype_of_typ t) 0
+          A.Float -> L.const_float (ltype_of_typ t) 0.0
+        | _ -> L.const_int (ltype_of_typ t) 0
       in StringMap.add n (L.define_global n init the_module) m in
-
+    List.fold_left global_var StringMap.empty globals in
+  
   (* declare i32 @printf(i8*, ...) *)
   let printf_t : L.lltype = 
       L.var_arg_function_type i32_t [| L.pointer_type i8_t |] in
@@ -78,7 +81,7 @@ let translate (_, functions) =
 
       (* Allocate space for any locally declared variables and add the
        * resulting registers to our map *)
-      let add_local m (t, n) =
+      let add_local m ((t, n), _) =
 	let local_var = L.build_alloca (ltype_of_typ t) n builder
 	in StringMap.add n local_var m 
       in
@@ -99,9 +102,9 @@ let translate (_, functions) =
       | SBoolLit b -> L.const_int i1_t (if b then 1 else 0)
       | SNoexpr -> L.const_int i32_t 0
       | SId s -> L.build_load (lookup s) s builder 
-      | SAssign (s, e) -> let e' = expr builder e in
+      | SAssign (e1, e2) -> let e' = expr builder e1 in
           let _ = L.build_store e' (lookup s) builder 
-          in e'
+          in e'om
       | SCall ("print", [e]) ->
 	  L.build_call printf_func [| int_format_str ; (expr builder e) |]
 	    "printf" builder 
