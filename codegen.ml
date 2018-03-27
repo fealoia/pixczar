@@ -33,9 +33,9 @@ let translate (globals, functions) =
     | A.Float     -> float_t
     | A.Bool      -> i1_t
     | A.Array(t)  -> L.pointer_type (ltype_of_typ t)
-    (*| A.Pix 
-    | A.Placement ->
-    | A.Frame ->*)
+    | A.Pix       -> pix_t
+    | A.Placement -> placement_t
+    | A.Frame     -> frame_t
     | t -> raise (Failure ("Type " ^ A.string_of_typ t ^ " not implemented yet"))
   in
   
@@ -118,6 +118,9 @@ let translate (globals, functions) =
       | SCall ("print", [e]) ->
 	  L.build_call printf_func [| int_format_str ; (expr builder e) |]
 	    "printf" builder
+     (* | SNew(t, el) -> match t with 
+          Pix -> L.build_load  *)
+
       | SBinop (e1, op, e2) ->
 	  let (_, t, _) = e1
 	  and e1' = expr builder e1
@@ -199,8 +202,10 @@ let translate (globals, functions) =
       | SFor (e1, e2, e3, body) -> stmt builder
 	    (map, ( SBlock [(map, SExpr e1) ; (map, SWhile (e2, (map, SBlock [body ;
             (map, SExpr e3)]))) ]))
+      | SVarDecs(svar) -> match svar with
+          ((t, s), e) :: tl -> let _ = L.build_store (expr builder e) (lookup s) builder
+                in builder
       | s -> to_imp (string_of_sstmt (map, ss))
-
     in
     
       (* Build the code for each statement in the function *)
