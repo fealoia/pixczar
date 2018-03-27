@@ -32,6 +32,12 @@ let translate (_, functions) =
     | t -> raise (Failure ("Type " ^ A.string_of_typ t ^ " not implemented yet"))
   in
 
+  let global_var m (t, n) =
+      let init = match t with
+      A.Float -> L.const_float (ltype_of_typ t) 0.0
+    | _ -> L.const_int (ltype_of_typ t) 0
+      in StringMap.add n (L.define_global n init the_module) m in
+
   (* declare i32 @printf(i8*, ...) *)
   let printf_t : L.lltype = 
       L.var_arg_function_type i32_t [| L.pointer_type i8_t |] in
@@ -39,27 +45,59 @@ let translate (_, functions) =
      L.declare_function "printf" printf_t the_module in 
 
   let to_imp str = raise (Failure ("Not yet implemented: " ^ str)) in
-
-  (* Generate the LLVM instructions to define a MicroC function *)
-  let build_function fdecl =
-
-    (* int main() {}  ----->  define i32 @main() {}  *)
-    let main_ty = L.function_type (ltype_of_typ fdecl.styp) [||] in
-    let the_function = L.define_function "main" main_ty the_module in
-
-    (* An LLVM "instruction builder" points to a basic block. 
-     * Adding a new instruction mutates both the_module and builder. *) 
+  
+  (* Define each function (arguments and return type) so we can 
+   * define it's body and call it later *)
+  let function_decls : (L.llvalue * sfunc_decl) StringMap.t =
+    let function_decl m fdecl =
+      let name = fdecl.sfname
+      and formal_types = 
+	Array.of_list (List.map (fun (t,_) -> ltype_of_typ t) fdecl.sformals)
+      in let ftype = L.function_type (ltype_of_typ fdecl.styp) formal_types in
+      StringMap.add name (L.define_function name ftype the_module, fdecl) m in
+    List.fold_left function_decl StringMap.empty functions in
+  
+  (* Fill in the body of the given function *)
+  let build_function_body fdecl =
+    let (the_function, _) = StringMap.find fdecl.sfname function_decls in
     let builder = L.builder_at_end context (L.entry_block the_function) in
 
-    (* @fmt = <stuff> [4 x i8] c"%d\0A\00" *) 
-    let int_format_str = L.build_global_stringptr "%d\n" "fmt" builder in
+    let int_format_str = L.build_global_stringptr "%d\n" "fmt" builder
+    and float_format_str = L.build_global_stringptr "%g\n" "fmt" builder in
 
-    let rec expr builder ((_, e) : sexpr) = match e with
+    (* Construct the function's "locals": formal arguments and locally
+       declared variables.  Allocate each on the stack, initialize their
+       value, if appropriate, and remember their values in the "locals" map *)
+    let local_vars =
+      let add_formal m (t, n) p = 
+        let () = L.set_value_name n p in
+	let local = L.build_alloca (ltype_of_typ t) n builder in
+        let _  = L.build_store p local builder in
+	StringMap.add n local m 
+      in
+
+      (* Allocate space for any locally declared variables and add the
+       * resulting registers to our map *)
+      let add_local m (t, n) =
+	let local_var = L.build_alloca (ltype_of_typ t) n builder
+	in StringMap.add n local_var m 
+      in
+
+      let formals = List.fold_left2 add_formal StringMap.empty fdecl.sformals
+          (Array.to_list (L.params the_function)) in
+      List.fold_left add_local formals fdecl.slocals 
+    in
+
+    let lookup n = try StringMap.find n local_vars
+                   with Not_found -> StringMap.find n global_vars
+    in
+
+    let rec expr builder ((_, _, e) : sexpr) = match e with
         (* 42  ----->  i32 42 *)
 	SLiteral i -> L.const_int i32_t i  
-      | SFliteral l -> L.const_float_of_string_float_t l
+      | SFliteral l -> L.const_float float_t l
       | SBoolLit b -> L.const_int i1_t (if b then 1 else 0)
-      | SNoExpr -> L.const_int i32_t 0
+      | SNoexpr -> L.const_int i32_t 0
       | SId s -> L.build_load (lookup s) s builder 
       | SAssign (s, e) -> let e' = expr builder e in
           let _ = L.build_store e' (lookup s) builder 
