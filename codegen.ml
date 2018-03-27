@@ -20,13 +20,14 @@ let translate (globals, functions) =
   and the_module = L.create_module context "MicroC" in
 
   (* Convert MicroC types to LLVM types *)
-  let ltype_of_typ = function
-      A.Int    -> i32_t
-    | A.Void   -> void_t
-    | A.String -> str_t
-    | A.Float  -> float_t
-    | A.Bool   -> i1_t
-  (*  | A.Pix -> 
+  let rec ltype_of_typ = function
+      A.Int       -> i32_t
+    | A.Void      -> void_t
+    | A.String    -> str_t
+    | A.Float     -> float_t
+    | A.Bool      -> i1_t
+    | A.Array(t)  -> L.pointer_type (ltype_of_typ t)
+    (*| A.Pix 
     | A.Placement ->
     | A.Frame ->*)
     | t -> raise (Failure ("Type " ^ A.string_of_typ t ^ " not implemented yet"))
@@ -103,19 +104,52 @@ let translate (globals, functions) =
       | SNoexpr -> L.const_int i32_t 0
       | SId s -> L.build_load (lookup s) s builder 
       | SAssign (e1, e2) -> let e' = expr builder e1 in
-          let _ = L.build_store e' (lookup s) builder 
-          in e'om
+          let check_var = match e1 with 
+             (_, _, SId(s)) -> let _ = L.build_store e' (lookup s) builder in e'
+           | (_, _, SAccessArray(s, e)) -> to_imp "this"
+           | _ -> to_imp "SAssign type"
+          in check_var
       | SCall ("print", [e]) ->
 	  L.build_call printf_func [| int_format_str ; (expr builder e) |]
-	    "printf" builder 
-      (* Throw an exception for any other expressions *)
-      | _ -> to_imp (string_of_sexpr (A.Int,e))  
+	    "printf" builder
+      | SBinop (e1, op, e2) ->
+	  let (_, t, _) = e1
+	  and e1' = expr builder e1
+	  and e2' = expr builder e2 in
+	  if t = A.Float then (match op with 
+	    A.Add     -> L.build_fadd
+	  | A.Sub     -> L.build_fsub
+	  | A.Mult    -> L.build_fmul
+	  | A.Div     -> L.build_fdiv 
+	  | A.Equal   -> L.build_fcmp L.Fcmp.Oeq
+	  | A.Neq     -> L.build_fcmp L.Fcmp.One
+	  | A.Less    -> L.build_fcmp L.Fcmp.Olt
+	  | A.Leq     -> L.build_fcmp L.Fcmp.Ole
+	  | A.Greater -> L.build_fcmp L.Fcmp.Ogt
+	  | A.Geq     -> L.build_fcmp L.Fcmp.Oge
+	  | A.And | A.Or ->
+	      raise (Failure "internal error: semant should have rejected and/or on float")
+	  ) e1' e2' "tmp" builder 
+	  else (match op with
+	  | A.Add     -> L.build_add
+	  | A.Sub     -> L.build_sub
+	  | A.Mult    -> L.build_mul
+          | A.Div     -> L.build_sdiv
+	  | A.And     -> L.build_and
+	  | A.Or      -> L.build_or
+	  | A.Equal   -> L.build_icmp L.Icmp.Eq
+	  | A.Neq     -> L.build_icmp L.Icmp.Ne
+	  | A.Less    -> L.build_icmp L.Icmp.Slt
+	  | A.Leq     -> L.build_icmp L.Icmp.Sle
+	  | A.Greater -> L.build_icmp L.Icmp.Sgt
+	  | A.Geq     -> L.build_icmp L.Icmp.Sge
+	  ) e1' e2' "tmp" builder
+      | _ -> to_imp ""
     in
 
     let rec stmt builder = function
         SExpr e -> let _ = expr builder e in builder 
       | SBlock sl -> List.fold_left stmt builder sl
-      (* return 0;  ----->  ret i32 0 *)
       | SReturn e -> let _ = match fdecl.styp with
                               A.Int -> L.build_ret (expr builder e) builder 
                             | _ -> to_imp (A.string_of_typ fdecl.styp)
