@@ -101,7 +101,7 @@ stmt:
   | BREAK SEMI                                { Break                              }
   | CONTINUE SEMI                             { Continue                           }
   | vdecl_list SEMI                           { VarDecs(List.rev $1)               }
-  | ID DOT ID LPAREN args_opt RPAREN SEMI     { ObjCall($1, $3, $5)                }
+  | expr DOT ID LPAREN args_opt RPAREN SEMI   { ObjCall($1, $3, $5)                }
   | STRUCT ID LBRACE struct_vdecl_list SEMI RBRACE SEMI
                                               { CreateStruct($2, List.rev $4)      }
 
@@ -135,16 +135,16 @@ expr:
   | expr OR     expr { Binop($1, Or,    $3)   }
   | MINUS expr %prec NEG { Unop(Neg, $2)      }
   | NOT expr         { Unop(Not, $2)          }
-  | ID ASSIGN expr   { Assign($1, $3)         }
+  | expr ASSIGN expr { Assign($1, $3)         }
   | ID LPAREN args_opt RPAREN { Call($1, $3)  }
   | LPAREN expr RPAREN { $2                   }
   | NEW nonprim_typ LPAREN args_opt RPAREN { New($2, $4)                    }
   | NEW nonprim_typ LBRACK LITERAL RBRACK  { NewArray($2, $4)               }
   | NEW prim_typ LBRACK LITERAL RBRACK     { NewArray($2, $4)               }
   | LBRACK args_opt RBRACK                 { CreateArray($2)                }
-  | ID LBRACK LITERAL RBRACK               { AccessArray($1, $3)            }
+  | ID LBRACK expr RBRACK                  { AccessArray($1, $3)            }
   | ID LBRACK LITERAL COLON LITERAL RBRACK { SubArray($1, $3, $5)           }
-  | ID DOT ID                              { AccessStruct($1, $3)           }
+  | ID COLON ID                            { AccessStruct($1, $3)           }
   | expr PLUS PLUS                         { PostUnop($1, PostIncrement)    }
   | expr MINUS MINUS                       { PostUnop($1, PostDecrement)    }
 

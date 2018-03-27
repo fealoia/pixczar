@@ -101,12 +101,12 @@ let check (globals, functions) =
       | Noexpr      -> (map, Void, SNoexpr)
       | NullLit     -> (map, Null, SNullLit)
       | Id        s -> (map, type_of_identifier s map, SId s)
-      | Assign(var, e) as ex ->
-          let lt = type_of_identifier var map
-          and (map, rt, e') = check_expr e map in
-          let err = "illegal assignment " ^ string_of_typ lt ^ " = " ^
+      | Assign(le, e) as ex ->
+          let (map, rt, e') = check_expr e map in
+          let (map, t_le, le') = check_expr le map
+          in let err = "illegal assignment " ^ string_of_typ t_le ^ " = " ^
             string_of_typ rt ^ " in " ^ string_of_expr ex
-          in (map, check_assign lt rt err, SAssign(var, (map, rt, e')))
+          in (map, check_assign t_le rt err, SAssign((map, t_le, le'), (map, rt, e')))
       | Unop(op, e) as ex ->
           let (map, t, e') = check_expr e map in
           let ty = match op with
@@ -209,13 +209,14 @@ let check (globals, functions) =
               (x,y,z) :: tl -> (map, Array(y), SCreateArray(result))
             | _ -> (map, Array(Notyp), SCreateArray(result))
           in arr
-      | AccessArray(id, idx) -> (*ToDo: can only access through variable *)
+      | AccessArray(id, e2) -> (* ToDo check idx *)
           let id_err = "Illegal identifier " ^ id
-          in let idx_err = "Illegal index " ^ string_of_int idx ^ " on
+          in let idx_err = "Illegal index " ^ string_of_expr e2 ^ " on
           identifier" ^ id
+          in let (map2, et2, e2') = check_expr e2 map
           in let check_access = match (type_of_identifier id map) with
-              Array(typ) -> if idx < 0 then raise (Failure (idx_err)) else
-                  (map, typ, SAccessArray(id, idx))
+              (Array(typ)) -> if false then raise (Failure (idx_err)) else
+                  (map2, typ, SAccessArray(id, (map2, et2, e2')))
             | _ -> raise (Failure (id_err))
           in check_access
       | SubArray(s, beg, end') -> if true then raise (Failure ("SubArray not yet
@@ -233,9 +234,9 @@ let check (globals, functions) =
     (* Return a semantically-checked statement i.e. containing sexprs *)
     let rec check_stmt e map= match e with
         Expr e -> (map, SExpr (check_expr e map))
-     (* | If(p, b1, b2) -> (map, SIf(check_bool_expr p map, check_stmt b1 map, check_stmt b2 map))*)
-
-
+      | If(w,x,y,z) -> raise (Failure("not yet implemented"))
+      | ElseIf(x,y) -> raise (Failure("not yet implemented")) 
+      | CreateStruct(x,y) -> raise (Failure("not yet implemented"))
       | For(e1, e2, e3, st) -> let (x,y,z) = check_expr e1 map in
                                let (x', y',z') = check_bool_expr e2 x in
                                let (x'',y'',z'') = check_expr e3 x' in
@@ -258,7 +259,7 @@ let check (globals, functions) =
             | s :: ss         -> let (x,y) = check_stmt s map in (x,y) ::check_stmt_list ss x
             | []              -> []
           in (map, SBlock(check_stmt_list sl map))
-      | ObjCall(name, func, args) as s ->
+      | ObjCall(e, func, args) as s ->
               (* ToDo: other object functions; cannot have null argument*)
           let err = "illegal object function call " ^ string_of_stmt s in
           let check_func func_params args = if List.length args !=
@@ -267,20 +268,19 @@ let check (globals, functions) =
                     let (map, et, e') = check_expr e map
                 in (map, check_assign ft et err, e')
              in List.map2 check_call func_params args
-          in let check_it = match (type_of_identifier name map) with
-              Pix -> if func <> "makeEllipse" then raise (Failure(err)) else
-                  let args' = (map, SObjCall(name, func, (check_func [(Int, "width"); (Int, "height"); (Array(Int),
+          in let checked_expr = check_expr e map
+          in let check_it = match checked_expr with
+              (_, Pix, _) -> if func <> "makeEllipse" then raise (Failure(err)) else
+                  let args' = (map, SObjCall(checked_expr, func, (check_func [(Int, "width"); (Int, "height"); (Array(Int),
                   "rgb")] args)))
                   in let arr_size_check = match args with
                         x :: y :: CreateArray(z) :: [] -> if List.length z != 3 then raise (Failure(err)) else args'
                       | _ -> raise (Failure(err))
                   in arr_size_check
-            | Array(Frame) -> if func <> "addPlacement" then raise (Failure(err)) else
-                  (map, SObjCall(name, func, check_func [(Placement, "place")] args))
+            | (_, Frame, _) -> if func <> "addPlacement" then raise (Failure(err)) else
+                  (map, SObjCall(checked_expr, func, check_func [(Placement, "place")] args))
             | _ -> raise (Failure(err))
           in check_it
-      (*| VarDecs(vars) -> (*ToDo: multiple per line*)*)
-
 
       | VarDecs(field) -> let (b, e) = get_first field
                           in let t = fst b
@@ -295,10 +295,6 @@ let check (globals, functions) =
 
       | Continue -> (map, SContinue)
       | Break -> (map, SBreak)
-
-    in let check_var_expr (to_check : var list list) map =
-        let check_accum accum (bnd, ex) = (bnd, check_expr ex map) :: accum
-        in List.rev (List.fold_left check_accum [] (List.map get_first to_check))
 
     in (* body of check_function *)
     { styp = func.typ;

@@ -17,7 +17,7 @@ type expr =
   | Binop of expr * op * expr
   | Unop of uop * expr
   | PostUnop of expr * post_uop
-  | Assign of string * expr
+  | Assign of expr * expr
   | Call of string * expr list
   | Noexpr
   | NullLit 
@@ -25,7 +25,7 @@ type expr =
   | NewArray of typ * int
   | CreateArray of expr list
   | SubArray of string * int * int
-  | AccessArray of string * int
+  | AccessArray of string * expr
   | AccessStruct of string * string
 
 type bind = typ * string
@@ -43,7 +43,7 @@ type stmt =
   | Break 
   | Continue
   | VarDecs of var list
-  | ObjCall of string * string * expr list
+  | ObjCall of expr * string * expr list
   | CreateStruct of string * var list list
 
 type func_decl = {
@@ -105,7 +105,7 @@ let rec string_of_expr = function
       string_of_expr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_expr e2
   | Unop(o, e) -> string_of_uop o ^ string_of_expr e
   | PostUnop(e, o) -> string_of_expr e ^ string_of_post_uop o
-  | Assign(v, e) -> v ^ " = " ^ string_of_expr e
+  | Assign(e1, e2) -> string_of_expr e1 ^ " = " ^ string_of_expr e2
   | Call(f, el) ->
       f ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ")"
   | Noexpr -> ""
@@ -114,7 +114,7 @@ let rec string_of_expr = function
      "new " ^ string_of_typ t ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ")"
   | CreateArray(el) -> "[" ^ String.concat "," (List.map string_of_expr el) ^ "]"
   | SubArray(id, i1, i2) -> id ^ "[" ^ string_of_int i1 ^ ":" ^ string_of_int i2 ^ "]"
-  | AccessArray(id, i) -> id ^ "[" ^ string_of_int i ^ "]"
+  | AccessArray(id, e2) -> id ^ "[" ^ string_of_expr e2 ^ "]"
   | NewArray(t, i) -> "new " ^ string_of_typ t ^ "[" ^ string_of_int i ^ "]"
   | AccessStruct(i1, i2) -> i1 ^ "." ^ i2
 
@@ -143,7 +143,7 @@ let rec string_of_stmt = function
   | Break -> "break;\n"
   | Continue -> "continue;\n"
   | VarDecs(vars) -> String.concat "," (List.map string_of_vdecl vars) ^ ";\n"
-  | ObjCall(o, f, el) -> o ^ "." ^ f ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ");\n"
+  | ObjCall(e, f, el) -> string_of_expr e ^ "." ^ f ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ");\n"
   | CreateStruct(s, vdecls) -> "Struct " ^ s ^ "\n{\n" ^ 
       String.concat "" (List.map string_of_vdecls vdecls) ^ "};\n" 
 

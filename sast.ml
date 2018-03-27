@@ -12,7 +12,7 @@ and sx =
   | SBinop of sexpr * op * sexpr
   | SUnop of uop * sexpr
   | SPostUnop of sexpr * post_uop
-  | SAssign of string * sexpr
+  | SAssign of sexpr * sexpr
   | SCall of string * sexpr list
   | SNoexpr
   | SNullLit
@@ -20,7 +20,7 @@ and sx =
   | SNewArray of typ * int
   | SCreateArray of sexpr list
   | SSubArray of string * int * int
-  | SAccessArray of string * int
+  | SAccessArray of string * sexpr
   | SAccessStruct of string * string
   | SPostIncrement of sexpr
   | SPostDecrement of sexpr
@@ -39,7 +39,7 @@ and ss =
   | SBreak
   | SContinue
   | SVarDecs of svar list
-  | SObjCall of string * string * sexpr list
+  | SObjCall of sexpr * string * sexpr list
   | SCreateStruct of string * svar list list
 
 type sfunc_decl = {
@@ -65,7 +65,7 @@ let rec string_of_sexpr (_, t, e) =
       string_of_sexpr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_sexpr e2
   | SUnop(o, e) -> string_of_uop o ^ string_of_sexpr e
   | SPostUnop(e, o) -> string_of_sexpr e ^ string_of_post_uop o
-  | SAssign(v, e) -> v ^ " = " ^ string_of_sexpr e
+  | SAssign(e1, e2) -> string_of_sexpr e1 ^ " = " ^ string_of_sexpr e2
   | SCall(f, el) ->
       f ^ "(" ^ String.concat ", " (List.map string_of_sexpr el) ^ ")"
   | SNoexpr -> ""
@@ -74,7 +74,7 @@ let rec string_of_sexpr (_, t, e) =
      "new " ^ string_of_typ t ^ "(" ^ String.concat ", " (List.map string_of_sexpr el) ^ ")"
   | SCreateArray(el) -> "[" ^ String.concat "," (List.map string_of_sexpr el) ^ "]"
   | SSubArray(id, i1, i2) -> id ^ "[" ^ string_of_int i1 ^ ":" ^ string_of_int i2 ^ "]"
-  | SAccessArray(id, i) -> id ^ "[" ^ string_of_int i ^ "]"
+  | SAccessArray(id, e2) -> id ^ "[" ^ string_of_sexpr e2 ^ "]"
   | SNewArray(t, i) -> "new " ^ string_of_typ t ^ "[" ^ string_of_int i ^ "]"
   | SAccessStruct(i1, i2) -> i1 ^ "." ^ i2
   | SPostIncrement(e) -> "(" ^ string_of_sexpr e ^ ")++"
@@ -106,7 +106,7 @@ let rec string_of_sstmt (map, e) = match e with
   | SBreak -> "break;\n"
   | SContinue -> "continue;\n"
   | SVarDecs(vars) -> String.concat "," (List.map string_of_svdecl vars) ^ ";\n"
-  | SObjCall(o, f, el) -> o ^ "." ^ f ^ "(" ^ String.concat ", " (List.map string_of_sexpr el) ^ ");\n"
+  | SObjCall(e, f, el) -> string_of_sexpr e ^ "." ^ f ^ "(" ^ String.concat ", " (List.map string_of_sexpr el) ^ ");\n"
   | SCreateStruct(s, vdecls) -> "Struct " ^ s ^ "\n{\n" ^
       String.concat "" (List.map string_of_svdecls vdecls) ^ "};\n"
 
