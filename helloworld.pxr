@@ -10,8 +10,8 @@ Void main() {
     
     Int i = 0;
     for(i; i < 150; i = i + 1) {
-        frames[0] = new Frame(750, 750);
-        frames[0].addPlacement(placeBall);
+        frames[i] = new Frame(750, 750);
+        frames[i].addPlacement(placeBall);
     }
 
     Int fps = 30;
