@@ -9,15 +9,21 @@ module StringMap = Map.Make(String)
 let translate (globals, functions) =
   let context    = L.global_context () in
   (* Add types to the context so we can use them in our LLVM code *)
-  let i32_t      = L.i32_type    context
-  and i8_t       = L.i8_type     context 
-  and void_t     = L.void_type   context 
-  and str_t      = L.pointer_type (L.i8_type context)
-  and float_t    = L.double_type context
-  and i1_t       = L.i1_type     context
-  (* Create an LLVM module -- this is a "container" into which we'll 
-     generate actual code *)
-  and the_module = L.create_module context "MicroC" in
+  let i32_t       = L.i32_type    context
+  and i8_t        = L.i8_type     context 
+  and void_t      = L.void_type   context 
+  and str_t       = L.pointer_type (L.i8_type context)
+  and float_t     = L.double_type context
+  and i1_t        = L.i1_type     context in
+  let pix_t       = L.struct_type context [|
+      (* Currently only holding width, height, need rgb*)
+      i32_t; i32_t; |] in
+  let placement_t = L.struct_type context [|
+      pix_t; i32_t; i32_t; i32_t; i32_t; |] in
+  let frame_t     = L.struct_type context [| (*ToDo: add placements arr *)
+      i32_t; i32_t; |] in
+  
+  let the_module = L.create_module context "MicroC" in
 
   (* Convert MicroC types to LLVM types *)
   let rec ltype_of_typ = function
