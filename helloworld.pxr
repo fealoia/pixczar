@@ -7,11 +7,13 @@ Void main() {
 
     //Place ball in middle of screen
     Placement placeBall = new Placement(ball, 375, 375, 1, 1);
-    Int i =0;
-    for(i = 0; i < 150; i = i + 1) {
-    //    frames[0] = new Frame(750, 750);
-      //  frames[0].addPlacement(placeBall);
+    
+    Int i = 0;
+    for(i; i < 150; i = i + 1) {
+        frames[0] = new Frame(750, 750);
+        frames[0].addPlacement(placeBall);
     }
-//    Int fps = 30;
-//    render(frames, fps);
+
+    Int fps = 30;
+    render(frames, fps);
 }

@@ -50,7 +50,6 @@ type func_decl = {
     typ : typ;
     fname : string;
     formals : bind list;
-    locals : var list list;
     body : stmt list;
   }
 

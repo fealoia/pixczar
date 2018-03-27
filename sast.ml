@@ -27,8 +27,8 @@ and sx =
 
 type svar = bind * sexpr
 
-type sstmt = typ StringMap.t * ssss
-and ssss =
+type sstmt = typ StringMap.t * ss
+and ss =
     SBlock of sstmt list
   | SExpr of sexpr
   | SReturn of sexpr
@@ -46,7 +46,6 @@ type sfunc_decl = {
     styp : typ;
     sfname : string;
     sformals : bind list;
-    slocals : svar list;
     sbody : sstmt list;
   }
 
@@ -90,7 +89,7 @@ let string_of_svdecl ((t1, id), (map, t2, value)) =
 let string_of_svdecls (vars) = String.concat "," (List.map string_of_svdecl vars) ^
     if (List.length vars) > 0 then ";\n" else ""
 
-let rec string_of_sstmt (map,e) = match e with
+let rec string_of_sstmt (map, e) = match e with
     SBlock(stmts) ->
       "{\n" ^ String.concat "" (List.map string_of_sstmt stmts) ^ "}\n"
   | SExpr(expr) -> string_of_sexpr expr ^ ";\n";

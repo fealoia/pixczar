@@ -59,7 +59,7 @@ let translate (_, functions) =
       | SAssign (s, e) -> let e' = expr builder e in
           let _ = L.build_store e' (lookup s) builder 
           in e'
-      | SCall ("print", [e]) ->  
+      | SCall ("print", [e]) ->
 	  L.build_call printf_func [| int_format_str ; (expr builder e) |]
 	    "printf" builder 
       (* Throw an exception for any other expressions *)

@@ -41,8 +41,7 @@ let check (globals, functions) =
   let built_in_decls =
     let add_bind map (name, typ, formal_vars) = StringMap.add name {
       typ = Void; fname = name;
-      formals = formal_vars;
-      locals = []; body = [] } map
+      formals = formal_vars; body = [] } map
     in List.fold_left add_bind StringMap.empty [ ("render", Void,
     [(Array(Frame), "frames"); (Int, "fps") ])]
   in
@@ -72,9 +71,8 @@ let check (globals, functions) =
   let _ = find_func "main" in (* Ensure "main" is defined *)
 
   let check_function func =
-    (* Make sure no formals or locals are void or duplicates *)
+    (* Make sure no formals are void or duplicates *)
     let formals' = check_binds "formal" func.formals in
-    let locals' = check_vars "local" func.locals in
 
     (* Raise an exception if the given rvalue type cannot be assigned to
        the given lvalue type *)
@@ -85,14 +83,13 @@ let check (globals, functions) =
     (* Build local symbol table of variables for this function *)
     let symbols = List.fold_left (fun m (ty, name) -> StringMap.add name ty m)
 	                StringMap.empty ((List.map fst (List.map get_first globals'))
-                        @ (List.map fst (List.map get_first locals'))
                         @ formals')
     in
 
     (* Return a variable from our local symbol table *)
     let type_of_identifier s map =
       try StringMap.find s map
-      with Not_found -> raise (Failure (string_of_bool (StringMap.is_empty map) ^ s))
+      with Not_found -> raise (Failure ("undeclared identifier" ^ s))
     in
 
     (* Return a semantically-checked expression, i.e., with a type *)
@@ -189,7 +186,7 @@ let check (globals, functions) =
           let arr = match s with
               Int       -> (map, Array(Int), SNewArray(Int, size))
             | Float     -> (map, Array(Float), SNewArray(Float, size))
-            | Bool   -> (map, Array(Bool), SNewArray(Bool, size))
+            | Bool      -> (map, Array(Bool), SNewArray(Bool, size))
             | String    -> (map, Array(String), SNewArray(String, size))
             | Pix       -> (map, Array(Pix), SNewArray(Pix, size))
             | Placement -> (map, Array(Placement), SNewArray(Placement, size))
@@ -307,7 +304,6 @@ let check (globals, functions) =
     { styp = func.typ;
       sfname = func.fname;
       sformals = formals';
-      slocals  = check_var_expr locals' symbols;
       sbody = match check_stmt (Block func.body) symbols with
 	(_ , SBlock(sl)) -> sl
       | _ -> let err = "internal error: block didn't become a block?"
