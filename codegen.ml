@@ -195,7 +195,15 @@ let translate (globals, functions) =
             (map, SExpr e3)]))) ]))
       | s -> to_imp (string_of_sstmt (map, ss))
 
-    in ignore (stmt builder (StringMap.empty, (SBlock fdecl.sbody)))
-  (* Build each function (there should only be one for Hello World), 
-     and return the final module *)
+    in
+    
+      (* Build the code for each statement in the function *)
+    let builder = stmt builder (StringMap.empty, SBlock fdecl.sbody) in
+
+    (* Add a return if the last block falls off the end *)
+    add_terminal builder (match fdecl.styp with
+        A.Void -> L.build_ret_void
+      | A.Float -> L.build_ret (L.const_float float_t 0.0)
+      | t -> L.build_ret (L.const_int (ltype_of_typ t) 0))
+
   in List.iter build_function_body functions; the_module
