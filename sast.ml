@@ -46,6 +46,7 @@ type sfunc_decl = {
     styp : typ;
     sfname : string;
     sformals : bind list;
+    slocals : svar list;
     sbody : sstmt list;
   }
 

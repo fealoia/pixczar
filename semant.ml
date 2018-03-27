@@ -41,7 +41,7 @@ let check (globals, functions) =
   let built_in_decls =
     let add_bind map (name, typ, formal_vars) = StringMap.add name {
       typ = Void; fname = name;
-      formals = formal_vars; body = [] } map
+      formals = formal_vars; locals = []; body = [] } map
     in List.fold_left add_bind StringMap.empty [ ("render", Void,
     [(Array(Frame), "frames"); (Int, "fps") ])]
   in
@@ -296,11 +296,17 @@ let check (globals, functions) =
       | Continue -> (map, SContinue)
       | Break -> (map, SBreak)
 
+    in let map_to_svar id typ resultlist = ((typ, id), (StringMap.empty, typ, (*ToDo: sloppy *)
+    SNoexpr)) :: resultlist 
+
+    in let sbody_stmt = check_stmt (Block func.body) symbols
+
     in (* body of check_function *)
     { styp = func.typ;
       sfname = func.fname;
       sformals = formals';
-      sbody = match check_stmt (Block func.body) symbols with
+      slocals = StringMap.fold map_to_svar (fst sbody_stmt) [];
+      sbody = match sbody_stmt with 
 	(_ , SBlock(sl)) -> sl
       | _ -> let err = "internal error: block didn't become a block?"
       in raise (Failure err)
