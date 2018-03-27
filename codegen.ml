@@ -146,6 +146,18 @@ let translate (globals, functions) =
 	  ) e1' e2' "tmp" builder
       | _ -> to_imp ""
     in
+    
+    (* Each basic block in a program ends with a "terminator" instruction i.e.
+    one that ends the basic block. By definition, these instructions must
+    indicate which basic block comes next -- they typically yield "void" value
+    and produce control flow, not values *)
+    (* Invoke "instr builder" if the current block doesn't already
+       have a terminator (e.g., a branch). *)
+    let add_terminal builder instr =
+                           (* The current block where we're inserting instr *)
+      match L.block_terminator (L.insertion_block builder) with
+	Some _ -> ()
+      | None -> ignore (instr builder) in
 
     let rec stmt builder (map, ss) = match ss with 
         SExpr e -> let _ = expr builder e in builder 
@@ -154,6 +166,33 @@ let translate (globals, functions) =
                               A.Int -> L.build_ret (expr builder e) builder 
                             | _ -> to_imp (A.string_of_typ fdecl.styp)
                      in builder
+      | SWhile (predicate, body) ->
+          (* First create basic block for condition instructions -- this will
+          serve as destination in the case of a loop *)
+	  let pred_bb = L.append_block context "while" the_function in
+          (* In current block, branch to predicate to execute the condition *)
+	  let _ = L.build_br pred_bb builder in
+
+          (* Create the body's block, generate the code for it, and add a branch
+          back to the predicate block (we always jump back at the end of a while
+          loop's body, unless we returned or something) *)
+	  let body_bb = L.append_block context "while_body" the_function in
+          let while_builder = stmt (L.builder_at_end context body_bb) body in
+	  let () = add_terminal while_builder (L.build_br pred_bb) in
+
+          (* Generate the predicate code in the predicate block *)
+	  let pred_builder = L.builder_at_end context pred_bb in
+	  let bool_val = expr pred_builder predicate in
+
+          (* Hook everything up *)
+	  let merge_bb = L.append_block context "merge" the_function in
+	  let _ = L.build_cond_br bool_val body_bb merge_bb pred_builder in
+	  L.builder_at_end context merge_bb
+
+      (* Implement for loops as while loops! *)
+      | SFor (e1, e2, e3, body) -> stmt builder
+	    (map, ( SBlock [(map, SExpr e1) ; (map, SWhile (e2, (map, SBlock [body ;
+            (map, SExpr e3)]))) ]))
       | s -> to_imp (string_of_sstmt (map, ss))
 
     in ignore (stmt builder (StringMap.empty, (SBlock fdecl.sbody)))
