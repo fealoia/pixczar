@@ -1,6 +1,8 @@
 open Ast
 
-type sexpr = typ * sx
+module StringMap = Map.Make(String)
+
+type sexpr = typ StringMap.t * typ * sx
 and sx =
     SLiteral of int
   | SFliteral of float
@@ -25,7 +27,8 @@ and sx =
 
 type svar = bind * sexpr
 
-type sstmt =
+type sstmt = typ StringMap.t * ssss
+and ssss =
     SBlock of sstmt list
   | SExpr of sexpr
   | SReturn of sexpr
@@ -51,7 +54,7 @@ type sprogram = svar list list * sfunc_decl list
 
 (* Pretty-printing functions *)
 
-let rec string_of_sexpr (t, e) =
+let rec string_of_sexpr (_, t, e) =
     "(" ^ string_of_typ t ^ " : " ^ (match e with
     SLiteral(l) -> string_of_int l
   | SFliteral(l) -> string_of_float l
@@ -79,20 +82,20 @@ let rec string_of_sexpr (t, e) =
   | SPostDecrement(e) -> "(" ^ string_of_sexpr e ^ ")--"
     ) ^ ")"
 
-let string_of_svdecl ((t1, id), (t2, value)) =
+let string_of_svdecl ((t1, id), (map, t2, value)) =
   match value with
   | SNoexpr -> string_of_typ t1 ^ " " ^ id
-  | _ -> string_of_typ t1 ^ " " ^ id ^ " = " ^ string_of_sexpr (t1, value)
+  | _ -> string_of_typ t1 ^ " " ^ id ^ " = " ^ string_of_sexpr (StringMap.empty, t1, value)
 
 let string_of_svdecls (vars) = String.concat "," (List.map string_of_svdecl vars) ^
     if (List.length vars) > 0 then ";\n" else ""
 
-let rec string_of_sstmt = function
+let rec string_of_sstmt (map,e) = match e with
     SBlock(stmts) ->
       "{\n" ^ String.concat "" (List.map string_of_sstmt stmts) ^ "}\n"
   | SExpr(expr) -> string_of_sexpr expr ^ ";\n";
   | SReturn(expr) -> "return " ^ string_of_sexpr expr ^ ";\n";
-  | SIf(e, s, stmts, SBlock([])) -> "if (" ^ string_of_sexpr e ^ ")\n" ^ string_of_sstmt s
+  | SIf(e, s, stmts, (map, SBlock([]))) -> "if (" ^ string_of_sexpr e ^ ")\n" ^ string_of_sstmt s
       ^ String.concat "" (List.map string_of_sstmt stmts)
   | SIf(e, s1, stmts, s2) ->  "if (" ^ string_of_sexpr e ^ ")\n" ^
       string_of_sstmt s1 ^ String.concat "" (List.map string_of_sstmt stmts) ^ "else\n" ^ string_of_sstmt s2

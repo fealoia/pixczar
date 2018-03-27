@@ -96,41 +96,41 @@ let check (globals, functions) =
     in
 
     (* Return a semantically-checked expression, i.e., with a type *)
-    let rec check_expr = function
-        Literal   l -> (Int, SLiteral l)
-      | Fliteral  l -> (Float, SFliteral l)
-      | BoolLit   l -> (Bool, SBoolLit l)
-      | StringLit l -> (String, SStringLit l)
-      | Noexpr      -> (Void, SNoexpr)
-      | NullLit     -> (Null, SNullLit)
-      | Id        s -> (type_of_identifier s, SId s)
+    let rec check_expr e map = match e with
+        Literal   l -> (map, Int, SLiteral l)
+      | Fliteral  l -> (map, Float, SFliteral l)
+      | BoolLit   l -> (map, Bool, SBoolLit l)
+      | StringLit l -> (map, String, SStringLit l)
+      | Noexpr      -> (map, Void, SNoexpr)
+      | NullLit     -> (map, Null, SNullLit)
+      | Id        s -> (map, type_of_identifier s, SId s)
       | Assign(var, e) as ex ->
           let lt = type_of_identifier var
-          and (rt, e') = check_expr e in
+          and (map, rt, e') = check_expr e map in
           let err = "illegal assignment " ^ string_of_typ lt ^ " = " ^
             string_of_typ rt ^ " in " ^ string_of_expr ex
-          in (check_assign lt rt err, SAssign(var, (rt, e')))
+          in (map, check_assign lt rt err, SAssign(var, (map, rt, e')))
       | Unop(op, e) as ex ->
-          let (t, e') = check_expr e in
+          let (map, t, e') = check_expr e map in
           let ty = match op with
             Neg when t = Int || t = Float -> t
           | Not when t = Bool -> Bool
           | _ -> raise (Failure ("illegal unary operator " ^
                                  string_of_uop op ^ string_of_typ t ^
                                  " in " ^ string_of_expr ex))
-          in (ty, SUnop(op, (t, e')))
+          in (map, ty, SUnop(op, (map, t, e')))
       | PostUnop(e, op) as ex ->
-          let (t, e') = check_expr e in
+          let (map, t, e') = check_expr e map in
           let ty = match op with
             PostIncrement when t = Int -> t
           | PostDecrement when t = Int -> t
           | _ -> raise (Failure ("illegal postfix unary operator " ^
                                  string_of_typ t ^ " in " ^ string_of_expr ex ^
                                  string_of_post_uop op))
-          in (ty, SPostUnop((t, e'), op))
+          in (map, ty, SPostUnop((map, t, e'), op))
       | Binop(e1, op, e2) as e ->
-          let (t1, e1') = check_expr e1
-          and (t2, e2') = check_expr e2 in
+          let (_, t1, e1') = check_expr e1 map
+          and (_, t2, e2') = check_expr e2 map in
           (* All binary operators require operands of the same type *)
           let same = t1 = t2 in
           (* Determine expression type based on operator and operand types *)
@@ -146,7 +146,7 @@ let check (globals, functions) =
 	      Failure ("illegal binary operator " ^
                        string_of_typ t1 ^ " " ^ string_of_op op ^ " " ^
                        string_of_typ t2 ^ " in " ^ string_of_expr e))
-          in (ty, SBinop((t1, e1'), op, (t2, e2')))
+          in (map, ty, SBinop((map, t1, e1'), op, (map, t2, e2')))
       | Call(fname, args) as call ->
           let fd = find_func fname in
           let param_length = List.length fd.formals in
@@ -154,46 +154,46 @@ let check (globals, functions) =
             raise (Failure ("expecting " ^ string_of_int param_length ^
                             " arguments in " ^ string_of_expr call))
           else let check_call (ft, _) e =
-            let (et, e') = check_expr e in
+            let (map, et, e') = check_expr e map in
             let err = "illegal argument found " ^ string_of_typ et ^
                       " expected " ^ string_of_typ ft ^ " in " ^ string_of_expr e
-            in (check_assign ft et err, e')
+            in (map, check_assign ft et err, e')
           in
           let args' = List.map2 check_call fd.formals args
-          in (fd.typ, SCall(fname, args'))
+          in (map, fd.typ, SCall(fname, args'))
       | New(t, args) as new_l ->
           let len_err len = "expecting " ^ string_of_int len ^
                             " arguments in " ^ string_of_expr new_l
           and check_arg ft e =
-            let (et, e') = check_expr e in
+            let (map, et, e') = check_expr e map in
             let err = "illegal argument found " ^ string_of_typ et ^
                       " expected " ^ string_of_typ ft ^ " in " ^ string_of_expr e
-            in (check_assign ft et err, e')
+            in (map, check_assign ft et err, e')
           in let new_obj = match t with
               Pix       -> let check_pix args =
                   if List.length args != 0 then raise (Failure (len_err 0)) else []
-                in (Pix, SNew(Pix, check_pix args))
+                in (map, Pix, SNew(Pix, check_pix args))
             | Placement -> let check_placement args =
                   if List.length args != 5 then raise (Failure (len_err 5)) else
                     List.map2 check_arg [Pix; Int; Int; Int; Int] args
-                in (Placement, SNew(Placement, check_placement args))
+                in (map, Placement, SNew(Placement, check_placement args))
             | Frame     -> let check_frame args =
                   if List.length args != 2 then raise (Failure (len_err 2)) else
                     List.map2 check_arg [Int; Int] args
-                in (Frame, SNew(Frame, check_frame args))
+                in (map, Frame, SNew(Frame, check_frame args))
             | _           -> raise (Failure ("illegal object name " ^
                         string_of_typ t))
           in new_obj
       | NewArray(s, size) as e ->
           (* ToDo: structs, matrices? *)
           let arr = match s with
-              Int       -> (Array(Int), SNewArray(Int, size))
-            | Float     -> (Array(Float), SNewArray(Float, size))
-            | Bool   -> (Array(Bool), SNewArray(Bool, size))
-            | String    -> (Array(String), SNewArray(String, size))
-            | Pix       -> (Array(Pix), SNewArray(Pix, size))
-            | Placement -> (Array(Placement), SNewArray(Placement, size))
-            | Frame     -> (Array(Frame), SNewArray(Frame, size))
+              Int       -> (map, Array(Int), SNewArray(Int, size))
+            | Float     -> (map, Array(Float), SNewArray(Float, size))
+            | Bool   -> (map, Array(Bool), SNewArray(Bool, size))
+            | String    -> (map, Array(String), SNewArray(String, size))
+            | Pix       -> (map, Array(Pix), SNewArray(Pix, size))
+            | Placement -> (map, Array(Placement), SNewArray(Placement, size))
+            | Frame     -> (map, Array(Frame), SNewArray(Frame, size))
             | _           -> raise (Failure ("illegal array type in " ^
                                 string_of_expr e))
         in if size > -1 then arr else
@@ -202,15 +202,15 @@ let check (globals, functions) =
           let err ext et = "illegal expression found " ^ string_of_typ et ^
                 "expected " ^ string_of_typ ext ^ " in " ^ string_of_expr e
           in let check_types sexprs expr =
-            let (et, e') = check_expr expr in
+            let (map, et, e') = check_expr expr map in
               match sexprs with
-                hd :: tl -> if (fst hd) = et then (et, e') :: sexprs else raise
-                        (Failure (err (fst hd) et))
-                | _ -> (et, e') :: sexprs
+                (x, y, z) :: tl -> if (y) = et then (map, et, e') :: sexprs else raise
+                        (Failure (err (y) et))
+                | _ -> (map, et, e') :: sexprs
           in let result = List.fold_left check_types [] args in
           let arr = match result with
-              hd :: tl -> (Array(fst hd), SCreateArray(result))
-            | _ -> (Array(Notyp), SCreateArray(result))
+              (x,y,z) :: tl -> (map, Array(y), SCreateArray(result))
+            | _ -> (map, Array(Notyp), SCreateArray(result))
           in arr
       | AccessArray(id, idx) -> (*ToDo: can only access through variable *)
           let id_err = "Illegal identifier " ^ id
@@ -218,31 +218,30 @@ let check (globals, functions) =
           identifier" ^ id
           in let check_access = match (type_of_identifier id) with
               Array(typ) -> if idx < 0 then raise (Failure (idx_err)) else
-                  (typ, SAccessArray(id, idx))
+                  (map, typ, SAccessArray(id, idx))
             | _ -> raise (Failure (id_err))
           in check_access
       | SubArray(s, beg, end') -> if true then raise (Failure ("SubArray not yet
-                implemented")) else (Notyp, SSubArray("", 0, 0))
+                implemented")) else (map, Notyp, SSubArray("", 0, 0))
       | AccessStruct(s, field) -> if true then raise (Failure ("AccessStructure not yet
-                implemented")) else (Notyp, SSubArray("", 0, 0))
+                implemented")) else (map, Notyp, SSubArray("", 0, 0))
     in
 
-    let check_bool_expr e =
-      let (t', e') = check_expr e
+    let check_bool_expr e map=
+      let (map, t', e') = check_expr e map
       and err = "expected Boolean expression in " ^ string_of_expr e
-      in if t' != Bool then raise (Failure err) else (t', e')
+      in if t' != Bool then raise (Failure err) else (map, t', e')
     in
 
     (* Return a semantically-checked statement i.e. containing sexprs *)
-    let rec check_stmt = function
-        Expr e -> SExpr (check_expr e)
-     (* | If(p, b1, b2) -> SIf(check_bool_expr p, check_stmt b1, check_stmt
-      * b2)*)
+    let rec check_stmt e map= match e with
+        Expr e -> (map, SExpr (check_expr e map))
+     (* | If(p, b1, b2) -> (map, SIf(check_bool_expr p map, check_stmt b1 map, check_stmt b2 map))*)
       | For(e1, e2, e3, st) ->
-	  SFor(check_expr e1, check_bool_expr e2, check_expr e3, check_stmt st)
-      | While(p, s) -> SWhile(check_bool_expr p, check_stmt s)
-      | Return e -> let (t, e') = check_expr e in
-        if t = func.typ then SReturn (t, e')
+	  (map, SFor(check_expr e1 map, check_bool_expr e2 map, check_expr e3 map, check_stmt st map))
+      | While(p, s) -> (map, SWhile(check_bool_expr p map, check_stmt s map))
+      | Return e -> let (map, t, e') = check_expr e map in
+        if t = func.typ then (map, SReturn (map, t, e'))
         else raise (
           Failure ("return gives " ^ string_of_typ t ^ " expected " ^
                    string_of_typ func.typ ^ " in " ^ string_of_expr e))
@@ -251,69 +250,61 @@ let check (globals, functions) =
 	       follows any Return statement.  Nested blocks are flattened. *)
       | Block sl ->
           let rec check_stmt_list = function
-              [Return _ as s] -> [check_stmt s]
+              [Return _ as s] -> [check_stmt s map]
             | Return _ :: _   -> raise (Failure "nothing may follow a return")
             | Block sl :: ss  -> check_stmt_list (sl @ ss) (* Flatten blocks *)
-            | s :: ss         -> check_stmt s :: check_stmt_list ss
+            | s :: ss         -> check_stmt s map :: check_stmt_list ss
             | []              -> []
-          in SBlock(check_stmt_list sl)
+          in (map, SBlock(check_stmt_list sl))
       | ObjCall(name, func, args) as s ->
               (* ToDo: other object functions; cannot have null argument*)
           let err = "illegal object function call " ^ string_of_stmt s in
           let check_func func_params args = if List.length args !=
               List.length func_params then raise (Failure(err)) else
                 let check_call (ft, _) e =
-                    let (et, e') = check_expr e
-                in (check_assign ft et err, e')
+                    let (map, et, e') = check_expr e map
+                in (map, check_assign ft et err, e')
              in List.map2 check_call func_params args
-          in let check_it = match (type_of_identifier name) with 
+          in let check_it = match (type_of_identifier name) with
               Pix -> if func != "makeEllipse" then raise (Failure(err)) else
-                  let args' = SObjCall(name, func, (check_func [(Int, "width"); (Int, "height"); (Array(Int),
-                  "rgb")] args))
-                  in let arr_size_check = match args with 
+                  let args' = (map, SObjCall(name, func, (check_func [(Int, "width"); (Int, "height"); (Array(Int),
+                  "rgb")] args)))
+                  in let arr_size_check = match args with
                         x :: y :: z -> if List.length z != 3 then raise (Failure(err)) else args'
                       | _ -> raise (Failure(err))
                   in arr_size_check
             | Array(Frame) -> if func != "addPlacement" then raise (Failure(err)) else
-                  SObjCall(name, func, check_func [(Placement, "place")] args)
+                  (map, SObjCall(name, func, check_func [(Placement, "place")] args))
             | _ -> raise (Failure(err))
           in check_it
       (*| VarDecs(vars) -> (*ToDo: multiple per line*)*)
 
-      | If(b, s1, s2, s3) -> if true then raise (Failure ("If not yet
-                implemented")) else SIf((Notyp, SNoexpr), SExpr(Notyp, SNoexpr),
-                [SExpr(Notyp, SNoexpr)], SExpr(Notyp, SNoexpr))
-      | ElseIf(b, s1) -> if true then raise (Failure ("ElseIf not yet
-                implemented")) else SElseIf((Notyp, SNoexpr), SExpr(Notyp,
-                SNoexpr))
-      | CreateStruct(s, field) -> if true then raise (Failure ("CreateStruct not yet
-                implemented")) else SCreateStruct("", [[((Notyp, ""), (Notyp,
-                SNoexpr))]])
+
       | VarDecs(field) -> let (b, e) = get_first field
                           in let t = fst b
                              and s = snd b
-                             in match StringMap.find_opt s symbols with
-                                      None -> let symbols = StringMap.add s symbols
-                                              in let (t2, _) = check_expr e
-                                                 in if t != t2 then raise ( Failure (
+                             in (match StringMap.find_opt s map with
+                                      None -> let new_symbols = StringMap.add s t map
+                                              in let (map, t2, _) = check_expr e new_symbols
+                                                 in if t <> t2 then raise ( Failure (
                                                   "LHS type of " ^ string_of_typ t ^ " not the same as " ^
-                                                  "RHS type of " ^ string_of_typ t2 )) else (t, SVarDecs(field))
-                                    | Some -> raise ( Failure ("Duplicate variable declaration " ^ s))
+                                                  "RHS type of " ^ string_of_typ t2 )) else (new_symbols, SVarDecs([(b, check_expr e new_symbols)]))
+                                    | Some(x) -> raise ( Failure ("Duplicate variable declaration " ^ s)))
 
-      | Continue -> SContinue
-      | Break -> SBreak
+      | Continue -> (map, SContinue)
+      | Break -> (map, SBreak)
 
-    in let check_var_expr (to_check : var list list) =
-        let check_accum accum (bnd, ex) = (bnd, check_expr ex) :: accum
+    in let check_var_expr (to_check : var list list) map =
+        let check_accum accum (bnd, ex) = (bnd, check_expr ex map) :: accum
         in List.rev (List.fold_left check_accum [] (List.map get_first to_check))
 
     in (* body of check_function *)
     { styp = func.typ;
       sfname = func.fname;
       sformals = formals';
-      slocals  = check_var_expr locals';
-      sbody = match check_stmt (Block func.body) with
-	SBlock(sl) -> sl
+      slocals  = check_var_expr locals' symbols;
+      sbody = match check_stmt (Block func.body) symbols with
+	(_ , SBlock(sl)) -> sl
       | _ -> let err = "internal error: block didn't become a block?"
       in raise (Failure err)
     }
