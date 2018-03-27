@@ -1,3 +1,11 @@
+type action = Ast | Sast | LLVM_IR | Compile
+
+let () =
+  let action = ref Compile in
+  let usage_msg = "usage: ./pixczar.native [file.pxr]" in
+  let channel = ref stdin in
+  Arg.parse [] (fun file -> channel := open_in file) usage_msg;
+
 let lexbuf = Lexing.from_channel !channel in
 let ast = Parser.program Scanner.token lexbuf in match !action with
 Ast -> print_string (Ast.string_of_program ast)

@@ -147,16 +147,16 @@ let translate (globals, functions) =
       | _ -> to_imp ""
     in
 
-    let rec stmt builder = function
+    let rec stmt builder (map, ss) = match ss with 
         SExpr e -> let _ = expr builder e in builder 
       | SBlock sl -> List.fold_left stmt builder sl
       | SReturn e -> let _ = match fdecl.styp with
                               A.Int -> L.build_ret (expr builder e) builder 
                             | _ -> to_imp (A.string_of_typ fdecl.styp)
                      in builder
-      | s -> to_imp (string_of_sstmt s)
+      | s -> to_imp (string_of_sstmt (map, ss))
 
-    in ignore (stmt builder (SBlock fdecl.sbody))
+    in ignore (stmt builder (StringMap.empty, (SBlock fdecl.sbody)))
   (* Build each function (there should only be one for Hello World), 
      and return the final module *)
-  in List.iter build_function functions; the_module
+  in List.iter build_function_body functions; the_module

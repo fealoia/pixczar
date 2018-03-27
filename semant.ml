@@ -106,11 +106,11 @@ let check (globals, functions) =
           let (map, t_le, le') = check_expr le map
           in let err = "illegal assignment " ^ string_of_typ t_le ^ " = " ^
             string_of_typ rt ^ " in " ^ string_of_expr ex
-          in match t_le with 
-              Id -> (map, check_assign t_le rt err, SAssign((map, t_le, le'), (map, rt, e')))
-            | AccessArray(id, idx) -> 
+          in let type_check = match e' with 
+              SId(s) -> (map, check_assign t_le rt err, SAssign((map, t_le, le'), (map, rt, e')))
+            | SAccessArray(id, idx) -> 
                     (map, check_assign t_le rt err, SAssign((map, t_le, le'), (map, rt, e')))
-            | _ -> raise (Failure(err))
+            | _ -> raise (Failure(err)) in type_check
       | Unop(op, e) as ex ->
           let (map, t, e') = check_expr e map in
           let ty = match op with
@@ -215,18 +215,15 @@ let check (globals, functions) =
           in arr
       | AccessArray(id, e2) -> (* ToDo check idx *)
           let id_err = "Illegal identifier " ^ id
-          in let idx_err = "Illegal index " ^ string_of_expr e2 ^ " on
-          identifier" ^ id
+          in let idx_err = "Illegal index " ^ string_of_expr e2 ^ " on identifier" ^ id
           in let (map2, et2, e2') = check_expr e2 map
           in let check_access = match (type_of_identifier id map) with
               (Array(typ)) -> if false then raise (Failure (idx_err)) else
                   (map2, typ, SAccessArray(id, (map2, et2, e2')))
             | _ -> raise (Failure (id_err))
           in check_access
-      | SubArray(s, beg, end') -> if true then raise (Failure ("SubArray not yet
-                implemented")) else (map, Notyp, SSubArray("", 0, 0))
-      | AccessStruct(s, field) -> if true then raise (Failure ("AccessStructure not yet
-                implemented")) else (map, Notyp, SSubArray("", 0, 0))
+      | SubArray(s, beg, end') -> if true then raise (Failure ("SubArray not yet implemented")) else (map, Notyp, SSubArray("", 0, 0))
+      | AccessStruct(s, field) -> if true then raise (Failure ("AccessStructure not yet implemented")) else (map, Notyp, SSubArray("", 0, 0))
     in
 
     let check_bool_expr e map=
