@@ -22,11 +22,6 @@ let translate (globals, functions) =
       pix_t; i32_t; i32_t; i32_t; i32_t; |] in
   let frame_t     = L.struct_type context [| (*ToDo: add placements arr *)
       i32_t; i32_t; |] in
-<<<<<<< HEAD
-
-  let the_module = L.create_module context "MicroC" in
-=======
->>>>>>> 291455207731299bf53d16df7aa7c69421551185
 
   let the_module = L.create_module context "PixCzar" in
 
@@ -110,11 +105,7 @@ let translate (globals, functions) =
 
     let rec expr builder ((_, _, e) : sexpr) = match e with
         (* 42  ----->  i32 42 *)
-<<<<<<< HEAD
-	SLiteral i -> L.const_int i32_t i
-=======
         SLiteral i -> L.const_int i32_t i
->>>>>>> 291455207731299bf53d16df7aa7c69421551185
       | SFliteral l -> L.const_float float_t l
       | SBoolLit b -> L.const_int i1_t (if b then 1 else 0)
       | SNoexpr -> L.const_int i32_t 0
@@ -125,49 +116,7 @@ let translate (globals, functions) =
            | (_, _, SAccessArray(s, e)) -> to_imp "this"
            | _ -> to_imp "SAssign type"
           in check_var
-<<<<<<< HEAD
       | SCall ("printf", [e]) ->
-	  L.build_call printf_func [| int_format_str ; (expr builder e) |]
-	    "printf" builder
-     (* | SNew(t, el) -> match t with
-          Pix -> L.build_load  *)
-
-      | SBinop (e1, op, e2) ->
-	  let (_, t, _) = e1
-	  and e1' = expr builder e1
-	  and e2' = expr builder e2 in
-	  if t = A.Float then (match op with
-	    A.Add     -> L.build_fadd
-	  | A.Sub     -> L.build_fsub
-	  | A.Mult    -> L.build_fmul
-	  | A.Div     -> L.build_fdiv
-	  | A.Equal   -> L.build_fcmp L.Fcmp.Oeq
-	  | A.Neq     -> L.build_fcmp L.Fcmp.One
-	  | A.Less    -> L.build_fcmp L.Fcmp.Olt
-	  | A.Leq     -> L.build_fcmp L.Fcmp.Ole
-	  | A.Greater -> L.build_fcmp L.Fcmp.Ogt
-	  | A.Geq     -> L.build_fcmp L.Fcmp.Oge
-	  | A.And | A.Or ->
-	      raise (Failure "internal error: semant should have rejected and/or on float")
-	  ) e1' e2' "tmp" builder
-	  else (match op with
-	  | A.Add     -> L.build_add
-	  | A.Sub     -> L.build_sub
-	  | A.Mult    -> L.build_mul
-          | A.Div     -> L.build_sdiv
-	  | A.And     -> L.build_and
-	  | A.Or      -> L.build_or
-	  | A.Equal   -> L.build_icmp L.Icmp.Eq
-	  | A.Neq     -> L.build_icmp L.Icmp.Ne
-	  | A.Less    -> L.build_icmp L.Icmp.Slt
-	  | A.Leq     -> L.build_icmp L.Icmp.Sle
-	  | A.Greater -> L.build_icmp L.Icmp.Sgt
-	  | A.Geq     -> L.build_icmp L.Icmp.Sge
-	  ) e1' e2' "tmp" builder
-      | _ -> to_imp ""
-    in
-=======
-      | SCall ("print", [e]) ->
         L.build_call printf_func [| int_format_str ; (expr builder e) |]
         "printf" builder
       | SBinop (e1, op, e2) -> binop_gen builder e1 op e2
@@ -261,7 +210,6 @@ let translate (globals, functions) =
           A.Int | A.Float | A.Bool -> build_unop unop t unop_lval
         | _ -> raise(Failure("Invalid type for unop: " ^ A.string_of_typ t))
         in
->>>>>>> 291455207731299bf53d16df7aa7c69421551185
 
     (* Each basic block in a program ends with a "terminator" instruction i.e.
     one that ends the basic block. By definition, these instructions must
