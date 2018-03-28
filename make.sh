@@ -37,9 +37,9 @@ do
   echo "--------------------------------------"
 done
 
-./pixczar.native helloworld2.pxr > "tester.ll"
+./pixczar.native helloworld.pxr > "tester.ll"
 
-if lli tester.ll;
+if lli tester.ll = 34;
 then
 	echo "helloworld test successful! Ball should be visible"
 else
