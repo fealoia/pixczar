@@ -32,7 +32,6 @@ let translate (globals, functions) =
 
   let the_module = L.create_module context "PixCzar" in
 
-  (* Convert PixCzar types to LLVM types *)
   let rec ltype_of_typ = function
       A.Int       -> i32_t
     | A.Void      -> void_t
@@ -41,9 +40,9 @@ let translate (globals, functions) =
     | A.Bool      -> i1_t
     | A.Null      -> i32_t
     | A.Array(t)  -> L.pointer_type (ltype_of_typ t)
-    | A.Pix       -> pix_t
-    | A.Placement -> placement_t
-    | A.Frame     -> frame_t
+    (*| A.Pix
+    | A.Placement ->
+    | A.Frame ->*)
     | t -> raise (Failure ("Type " ^ A.string_of_typ t ^ " not implemented yet"))
   in
 
@@ -62,7 +61,11 @@ let translate (globals, functions) =
   let printf_func : L.llvalue =
      L.declare_function "printf" printf_t the_module in
 
-  let to_imp str = raise (Failure ("Not yet implemented: " ^ str)) in
+  let to_imp str = raise (Failure ("Not yet implemented1: " ^ str)) in
+  let to_imp2 str = raise (Failure ("Not yet implemented2: " ^ str)) in
+  let to_imp3 str = raise (Failure ("Not yet implemented3: " ^ str)) in
+  let to_imp4 str = raise (Failure ("Not yet implemented4: " ^ str)) in
+  let to_imp5 str = raise (Failure ("Not yet implemented5: " ^ str)) in
 
   (* Define each function (arguments and return type) so we can
    * define it's body and call it later *)
@@ -81,7 +84,8 @@ let translate (globals, functions) =
     let builder = L.builder_at_end context (L.entry_block the_function) in
 
     let int_format_str = L.build_global_stringptr "%d\n" "fmt" builder
-    and float_format_str = L.build_global_stringptr "%g\n" "fmt" builder in
+    and float_format_str = L.build_global_stringptr "%g\n" "fmt" builder
+    and string_format_str = L.build_global_stringptr "%s\n" "fmt" builder in
 
     (* Construct the function's "locals": formal arguments and locally
        declared variables.  Allocate each on the stack, initialize their
@@ -112,7 +116,8 @@ let translate (globals, functions) =
 
     let rec expr builder ((_, _, e) : sexpr) = match e with
         (* 42  ----->  i32 42 *)
-        SLiteral i -> L.const_int i32_t i
+	SLiteral i -> L.const_int i32_t i
+      | SStringLit st -> L.build_global_stringptr st "tmp" builder
       | SFliteral l -> L.const_float float_t l
       | SBoolLit b -> L.const_int i1_t (if b then 1 else 0)
       | SNoexpr -> L.const_int i32_t 0
@@ -123,15 +128,13 @@ let translate (globals, functions) =
 (*
       | SAssign (e1, e2) -> let e' = expr builder e1 in
           let check_var = match e1 with
-             (_, _, SId(s)) -> let _ = L.build_store e' (lookup s) builder in e'
-           | (_, _, SAccessArray(s, e)) -> to_imp "this"
-           | _ -> to_imp "SAssign type"
+             (_, _, SId(s)) -> let _ = Hash.add params s (expr builder e2) in e'
+           | _ -> to_imp2 "SAssign type"
           in check_var
 *)
       | SAssign(e1, e2) -> assign_gen builder e1 e2
-      | SCall ("print", [e]) ->
-        L.build_call printf_func [| int_format_str ; (expr builder e) |]
-        "printf" builder
+      | SCall ("printf", [e]) ->
+        L.build_call printf_func [| string_format_str ; (expr builder e) |] "printf" builder
       | SBinop (e1, op, e2) -> binop_gen builder e1 op e2
       | SUnop(op, e) -> unop_gen builder op e
       | SNullLit -> L.const_null i32_t
@@ -299,7 +302,7 @@ let translate (globals, functions) =
       | SBlock sl -> List.fold_left stmt builder sl
       | SReturn e -> let _ = match fdecl.styp with
                               A.Int -> L.build_ret (expr builder e) builder
-                            | _ -> to_imp (A.string_of_typ fdecl.styp)
+                            | _ -> to_imp4 (A.string_of_typ fdecl.styp)
                      in builder
       | SWhile (predicate, body) ->
           (* First create basic block for condition instructions -- this will
@@ -324,13 +327,14 @@ let translate (globals, functions) =
 	  let _ = L.build_cond_br bool_val body_bb merge_bb pred_builder in
 	  L.builder_at_end context merge_bb
 
-      (* Implement for loops as while loops! *)
       | SFor (e1, e2, e3, body) -> stmt builder
 	    (map, ( SBlock [(map, SExpr e1) ; (map, SWhile (e2, (map, SBlock [body ;
             (map, SExpr e3)]))) ]))
+(*
       | SVarDecs(svar) -> match svar with
-          ((t, s), e) :: tl -> let _ = L.build_store (expr builder e) (lookup s) builder
+          ((t, s), e) :: tl -> let _ = (Hash.add params s (expr builder e))
                 in builder
+*)
       | s -> to_imp (string_of_sstmt (map, ss))
     in
 

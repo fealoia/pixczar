@@ -1,10 +1,8 @@
 #!/bin/sh
-export PATH=$PATH:/usr/local/opt/llvm/bin
+export PATH=$PATH:/usr/local/opt/llvm@3.7/bin
 
 passing_tests="tests/passing_tests/*"
 failing_tests="tests/failing_tests/*"
-executable= "pixczar.native"
-helloworld = "helloworld.pxr"
 success="SUCCESS"
 failure="FAILURE"
 red=`tput setaf 1`
@@ -39,14 +37,13 @@ do
   echo "--------------------------------------"
 done
 
-
-
 ./pixczar.native helloworld.pxr > "tester.ll"
 
-if lli tester.ll;
 
+
+if lli-3.7 tester.ll = 34;
 then
-	echo "helloworld test successful! Ball should be visible"
+	echo "helloworld test successful! The number 34 should be visible on terminal"
 else
-	echo "helloworld test failed;"
+	echo "helloworld test failed"
 fi
