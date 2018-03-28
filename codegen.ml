@@ -34,11 +34,9 @@ let translate (globals, functions) =
     | A.Bool      -> i1_t
     | A.Null      -> i32_t
     | A.Array(t)  -> L.pointer_type (ltype_of_typ t)
-(*
-    | A.Pix       -> L.pointer_type (find_global_class name)
-    | A.Placement ->
-    | A.Frame ->
-*)
+    | A.Pix       -> pix_t
+    | A.Placement -> placement_t
+    | A.Frame     -> frame_t
     | t -> raise (Failure ("Type " ^ A.string_of_typ t ^ " not implemented yet"))
   in
 
@@ -259,8 +257,10 @@ let translate (globals, functions) =
       | SFor (e1, e2, e3, body) -> stmt builder
 	    (map, ( SBlock [(map, SExpr e1) ; (map, SWhile (e2, (map, SBlock [body ;
             (map, SExpr e3)]))) ]))
+      | SVarDecs(svar) -> match svar with
+          ((t, s), e) :: tl -> let _ = L.build_store (expr builder e) (lookup s) builder
+                in builder
       | s -> to_imp (string_of_sstmt (map, ss))
-
     in
 
       (* Build the code for each statement in the function *)
