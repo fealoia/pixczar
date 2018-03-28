@@ -108,6 +108,7 @@ let translate (globals, functions) =
         SLiteral i -> L.const_int i32_t i
       | SFliteral l -> L.const_float float_t l
       | SBoolLit b -> L.const_int i1_t (if b then 1 else 0)
+      | SStringLit s -> stringlit_gen builder s
       | SNoexpr -> L.const_int i32_t 0
       | SId s -> L.build_load (lookup s) s builder
       | SAssign (e1, e2) -> let e' = expr builder e1 in
@@ -161,6 +162,9 @@ let translate (globals, functions) =
       ignore(L.build_store size_real arr_len_ptr builder);
       (* initialise_array arr_len_ptr size_real (const_int i32_t 0) 0 builder; *)
       arr
+
+    and stringlit_gen builder s =
+      L.build_global_stringptr s "tmp" builder
 
     and binop_gen  builder e1 op e2 =
       let (_, t, _) = e1
