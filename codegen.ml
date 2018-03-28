@@ -28,9 +28,8 @@ let translate (globals, functions) =
       i32_t; i32_t; |] in
 
   
-  let the_module = L.create_module context "MicroC" in
+  let the_module = L.create_module context "Pixczar" in
 
-  (* Convert MicroC types to LLVM types *)
   let rec ltype_of_typ = function
       A.Int       -> i32_t
     | A.Void      -> void_t
@@ -122,8 +121,7 @@ let translate (globals, functions) =
       | SId s -> Hash.find params s
       | SAssign (e1, e2) -> let e' = expr builder e1 in
           let check_var = match e1 with
-             (_, _, SId(s)) -> let _ = Hash.add params s (expr builder e2)
-           | (_, _, SAccessArray(s, e)) -> to_imp "this"
+             (_, _, SId(s)) -> let _ = Hash.add params s (expr builder e2) in e'
            | _ -> to_imp2 "SAssign type"
           in check_var
       | SCall ("printf", [e]) ->
@@ -269,16 +267,10 @@ let translate (globals, functions) =
       | SFor (e1, e2, e3, body) -> stmt builder
 	    (map, ( SBlock [(map, SExpr e1) ; (map, SWhile (e2, (map, SBlock [body ;
             (map, SExpr e3)]))) ]))
-<<<<<<< HEAD
       | SVarDecs(svar) -> match svar with
           ((t, s), e) :: tl -> let _ = (Hash.add params s (expr builder e))
                 in builder
       | s -> to_imp (string_of_sstmt (map, ss))
-    in
-=======
-      | s -> to_imp5 (string_of_sstmt (map, ss))
->>>>>>> ed3edd767663d66ade6beabba0ae47db761e1886
-
     in
     
       (* Build the code for each statement in the function *)
