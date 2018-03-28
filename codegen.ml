@@ -3,6 +3,13 @@ module A = Ast
 open Sast
 
 module StringMap = Map.Make(String)
+module Hash = Hashtbl
+
+let global_classes:(string, L.lltype) Hash.t = Hash.create 50
+let local_params:(string, L.llvalue) Hash.t = Hash.create 50
+let local_values:(string, L.llvalue) Hash.t = Hash.create 50
+let class_self:(string, L.llvalue) Hash.t = Hash.create 50
+let class_fields:(string, int) Hash.t = Hash.create 50
 
 (* Code Generation from the SAST. Returns an LLVM module if successful,
    throws an exception if something is wrong. *)
@@ -109,13 +116,19 @@ let translate (globals, functions) =
       | SFliteral l -> L.const_float float_t l
       | SBoolLit b -> L.const_int i1_t (if b then 1 else 0)
       | SNoexpr -> L.const_int i32_t 0
+(*
       | SId s -> L.build_load (lookup s) s builder
+*)
+      | SId s -> id_gen builder s true
+(*
       | SAssign (e1, e2) -> let e' = expr builder e1 in
           let check_var = match e1 with
              (_, _, SId(s)) -> let _ = L.build_store e' (lookup s) builder in e'
            | (_, _, SAccessArray(s, e)) -> to_imp "this"
            | _ -> to_imp "SAssign type"
           in check_var
+*)
+      | SAssign(e1, e2) -> assign_gen builder e1 e2
       | SCall ("print", [e]) ->
         L.build_call printf_func [| int_format_str ; (expr builder e) |]
         "printf" builder
@@ -126,6 +139,7 @@ let translate (globals, functions) =
       | SNewArray(t, size) -> new_array_gen builder t, size
 *)
       | SCreateArray(el) -> create_array_gen builder el
+      | SAccessArray(name, idx) -> access_array_gen builder name idx false
 (* not needed
       | SPostUnop of sexpr * post_uop
       | SAssign of sexpr * sexpr
@@ -134,12 +148,59 @@ let translate (globals, functions) =
       | SNewArray of typ * int
       | SCreateArray of sexpr list
       | SSubArray of string * int * int
-      | SAccessArray of string * sexpr
       | SAccessStruct of string * string
       | SPostIncrement of sexpr
       | SPostDecrement of sexpr
 *)
       | _ -> to_imp ""
+
+    and id_gen builder id is_deref =
+      if is_deref then
+        if Hash.mem local_values id then
+          let _val = Hash.find local_values id in
+          L.build_load _val id builder
+        else if Hash.mem local_params id then
+          Hash.find local_params id
+        else
+          raise(Failure("Unknown variable " ^ id))
+      else
+        if Hash.mem local_values id then
+          Hash.find local_values id
+        else if Hash.mem local_params id then
+          Hash.find local_params id
+        else
+          raise(Failure("Unknown variable " ^ id))
+
+    and assign_gen builder se1 se2 =
+      let (_, t1, e1) = se1 in
+      let (_, t2, e2) = se2 in
+
+      let (lhs, is_obj_access) = match e1 with
+          SId id -> (id_gen builder id false, false)
+        | SAccessArray(name, idx) -> (access_array_gen builder name idx true, true)
+        | _ -> raise(Failure("Unable to assign " ^ string_of_sexpr se1 ^ " to "
+                             ^ string_of_sexpr se2))
+      in
+
+      let rhs = match e2 with
+          SId(id) -> (match t2 with
+              A.Pix | A.Placement | A.Frame | A.String
+              (* | A.Array | A.Struct *) -> id_gen builder id false
+            | _ -> id_gen builder id true)
+        | SAccessArray(name, idx) -> access_array_gen builder name idx true
+        | _ -> expr builder se2
+      in
+
+      let rhs = match t2 with
+          A.Pix | A.Placement | A.Frame | A.String
+          (* | A.Array | A.Struct *) -> if is_obj_access then rhs
+                                else L.build_load rhs "tmp" builder
+        | A.Null -> L.const_null (ltype_of_typ t2)
+        | _ -> rhs
+      in
+
+      ignore(L.build_store rhs lhs builder);
+      rhs
 
     and create_array_gen builder el =
       let e = List.hd el in
@@ -161,6 +222,16 @@ let translate (globals, functions) =
       ignore(L.build_store size_real arr_len_ptr builder);
       (* initialise_array arr_len_ptr size_real (const_int i32_t 0) 0 builder; *)
       arr
+
+    and access_array_gen builder name index is_assign =
+      let arr_obj = id_gen builder name true in
+      let sindex = expr builder index in
+      let sindex = L.build_add sindex (L.const_int i32_t 1) "list_index" builder in
+      let _val = L.build_gep arr_obj [| sindex |] "list_access" builder in
+      if is_assign then
+        _val
+      else
+        L.build_load _val "list_access_val" builder
 
     and binop_gen  builder e1 op e2 =
       let (_, t, _) = e1
