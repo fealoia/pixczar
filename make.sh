@@ -39,9 +39,11 @@ done
 
 ./pixczar.native helloworld.pxr > "tester.ll"
 
-if lli-3.7 tester.ll;
+
+
+if lli tester.ll = 34;
 then
-	echo "helloworld test successful! Ball should be visible"
+	echo "helloworld test successful! The number 34 should be visible on terminal"
 else
-	echo "helloworld test failed;"
+	echo "helloworld test failed"
 fi

@@ -114,6 +114,7 @@ let translate (globals, functions) =
       | SStringLit st -> L.build_global_stringptr st "tmp" builder
       | SFliteral l -> L.const_float float_t l
       | SBoolLit b -> L.const_int i1_t (if b then 1 else 0)
+      | SStringLit s -> stringlit_gen builder s
       | SNoexpr -> L.const_int i32_t 0
       | SId s -> L.build_load (lookup s) s builder 
       | SAssign (e1, e2) -> let e' = expr builder e1 in
@@ -123,43 +124,103 @@ let translate (globals, functions) =
            | _ -> to_imp2 "SAssign type"
           in check_var
       | SCall ("printf", [e]) ->
-	  L.build_call printf_func [| string_format_str ; (expr builder e) |]
-	    "printf" builder
-      | SBinop (e1, op, e2) ->
-	  let (_, t, _) = e1
-	  and e1' = expr builder e1
-	  and e2' = expr builder e2 in
-	  if t = A.Float then (match op with 
-	    A.Add     -> L.build_fadd
-	  | A.Sub     -> L.build_fsub
-	  | A.Mult    -> L.build_fmul
-	  | A.Div     -> L.build_fdiv 
-	  | A.Equal   -> L.build_fcmp L.Fcmp.Oeq
-	  | A.Neq     -> L.build_fcmp L.Fcmp.One
-	  | A.Less    -> L.build_fcmp L.Fcmp.Olt
-	  | A.Leq     -> L.build_fcmp L.Fcmp.Ole
-	  | A.Greater -> L.build_fcmp L.Fcmp.Ogt
-	  | A.Geq     -> L.build_fcmp L.Fcmp.Oge
-	  | A.And | A.Or ->
-	      raise (Failure "internal error: semant should have rejected and/or on float")
-	  ) e1' e2' "tmp" builder 
-	  else (match op with
-	  | A.Add     -> L.build_add
-	  | A.Sub     -> L.build_sub
-	  | A.Mult    -> L.build_mul
-    | A.Div     -> L.build_sdiv
-	  | A.And     -> L.build_and
-	  | A.Or      -> L.build_or
-	  | A.Equal   -> L.build_icmp L.Icmp.Eq
-	  | A.Neq     -> L.build_icmp L.Icmp.Ne
-	  | A.Less    -> L.build_icmp L.Icmp.Slt
-	  | A.Leq     -> L.build_icmp L.Icmp.Sle
-	  | A.Greater -> L.build_icmp L.Icmp.Sgt
-	  | A.Geq     -> L.build_icmp L.Icmp.Sge
-	  ) e1' e2' "tmp" builder
-      | _ -> to_imp3 ""
-    in
-    
+        L.build_call printf_func [| int_format_str ; (expr builder e) |]
+        "printf" builder
+      | SBinop (e1, op, e2) -> binop_gen builder e1 op e2
+      | SUnop(op, e) -> unop_gen builder op e
+      | SNullLit -> L.const_null i32_t
+(*
+      | SNewArray(t, size) -> new_array_gen builder t, size
+*)
+      | SCreateArray(el) -> create_array_gen builder el
+(* not needed
+      | SPostUnop of sexpr * post_uop
+      | SAssign of sexpr * sexpr
+      | SCall of string * sexpr list
+      | SNew of typ * sexpr list
+      | SNewArray of typ * int
+      | SCreateArray of sexpr list
+      | SSubArray of string * int * int
+      | SAccessArray of string * sexpr
+      | SAccessStruct of string * string
+      | SPostIncrement of sexpr
+      | SPostDecrement of sexpr
+*)
+      | _ -> to_imp ""
+
+    and create_array_gen builder el =
+      let e = List.hd el in
+      let (m, t, sx) = e in
+      let lt = ltype_of_typ t in
+
+      (* This will not work for arrays of objects *)
+      let size = (expr builder e) in
+      let size_t = L.build_intcast (L.size_of lt) i32_t "tmp" builder in
+      let size = L.build_mul size_t size "tmp" builder in
+      let size_real = L.build_add size (L.const_int i32_t 1) "arr_size" builder in
+
+      let arr = L.build_array_malloc lt size_real "tmp" builder in
+      let arr = L.build_pointercast arr (L.pointer_type lt) "tmp" builder in
+
+      let arr_len_ptr = L.build_pointercast arr (L.pointer_type i32_t) "tmp" builder in
+
+      (* Store length at this position *)
+      ignore(L.build_store size_real arr_len_ptr builder);
+      (* initialise_array arr_len_ptr size_real (const_int i32_t 0) 0 builder; *)
+      arr
+
+    and stringlit_gen builder s =
+      L.build_global_stringptr s "tmp" builder
+
+    and binop_gen  builder e1 op e2 =
+      let (_, t, _) = e1
+        and e1' = expr builder e1
+        and e2' = expr builder e2
+        in if t = A.Float then (match op with
+            A.Add     -> L.build_fadd
+          | A.Sub     -> L.build_fsub
+          | A.Mult    -> L.build_fmul
+          | A.Div     -> L.build_fdiv
+          | A.Equal   -> L.build_fcmp L.Fcmp.Oeq
+          | A.Neq     -> L.build_fcmp L.Fcmp.One
+          | A.Less    -> L.build_fcmp L.Fcmp.Olt
+          | A.Leq     -> L.build_fcmp L.Fcmp.Ole
+          | A.Greater -> L.build_fcmp L.Fcmp.Ogt
+          | A.Geq     -> L.build_fcmp L.Fcmp.Oge
+          | A.And | A.Or ->
+              raise (Failure "internal error: semant should have rejected and/or on float")
+          ) e1' e2' "tmp" builder
+        else (match op with
+          | A.Add     -> L.build_add
+          | A.Sub     -> L.build_sub
+          | A.Mult    -> L.build_mul
+          | A.Div     -> L.build_sdiv
+          | A.And     -> L.build_and
+          | A.Or      -> L.build_or
+          | A.Equal   -> L.build_icmp L.Icmp.Eq
+          | A.Neq     -> L.build_icmp L.Icmp.Ne
+          | A.Less    -> L.build_icmp L.Icmp.Slt
+          | A.Leq     -> L.build_icmp L.Icmp.Sle
+          | A.Greater -> L.build_icmp L.Icmp.Sgt
+          | A.Geq     -> L.build_icmp L.Icmp.Sge
+          ) e1' e2' "tmp" builder
+
+    and unop_gen builder unop e =
+      let unop_lval = expr builder e
+      and (_, t, _) = e in
+      let build_unop op unop_typ lval = match op, unop_typ with
+          A.Neg, A.Int -> L.build_neg lval "neg_int_tmp" builder
+        | A.Neg, A.Float -> L.build_fneg lval "neg_flt_tmp" builder
+        | A.Not, A.Bool -> L.build_not lval "not_bool_tmp" builder
+        | _ -> raise(Failure("Unsupported unop for " ^ A.string_of_uop op ^
+          " and type " ^ A.string_of_typ t))
+      in
+
+      match t with
+          A.Int | A.Float | A.Bool -> build_unop unop t unop_lval
+        | _ -> raise(Failure("Invalid type for unop: " ^ A.string_of_typ t))
+        in
+
     (* Each basic block in a program ends with a "terminator" instruction i.e.
     one that ends the basic block. By definition, these instructions must
     indicate which basic block comes next -- they typically yield "void" value
