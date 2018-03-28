@@ -25,10 +25,8 @@ please change the path to the users appropriate llvm directory ***
 *** make.sh uses "-ocamlfind" and "lli" to compile source code so it is assumed
 that these compiling tools are already downloaded on user's computer ***
 
-helloworld.pxr is our simple tester function that declares a variable and then
-prints the variable (a float) to the terminal. It just contains a function
-declaration and a call to print.
+helloworld.pxr is our simple tester function that prints Hello World to the terminal screen
 
 The make.sh script checks to see if the output printed to the terminal is the
-float number xxx. If it matches the number then it prints out a success message,
+string 'Hello World'. If it matches the string then it prints out a success message,
 if it doesn't match then it prints out a failure message.
