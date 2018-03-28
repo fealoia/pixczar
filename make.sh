@@ -1,5 +1,5 @@
 #!/bin/sh
-export PATH=$PATH:/usr/local/opt/llvm/bin
+export PATH=$PATH:/usr/local/opt/llvm@3.7/bin
 
 passing_tests="tests/passing_tests/*"
 failing_tests="tests/failing_tests/*"
@@ -37,9 +37,9 @@ do
   echo "--------------------------------------"
 done
 
-./pixczar.native helloworld2.pxr > "tester.ll"
+./pixczar.native helloworld.pxr > "tester.ll"
 
-if lli tester.ll;
+if lli-3.7 tester.ll;
 then
 	echo "helloworld test successful! Ball should be visible"
 else

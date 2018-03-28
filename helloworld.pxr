@@ -1,4 +1,6 @@
 Void main() {
+    printf("hello");
+/*
     //Initializing 5 seconds of frames
     Frame[] frames = new Frame[150];
 
@@ -16,4 +18,5 @@ Void main() {
 
     Int fps = 30;
     render(frames, fps);
+    */
 }
