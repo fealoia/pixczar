@@ -1,5 +1,5 @@
 #!/bin/sh
-export PATH=$PATH:/usr/local/opt/llvm@3.7/bin
+export PATH=$PATH:/usr/local/opt/llvm/bin
 
 passing_tests="tests/passing_tests/*"
 failing_tests="tests/failing_tests/*"
@@ -39,11 +39,13 @@ done
 
 ./pixczar.native helloworld.pxr > "tester.ll"
 
+lli tester.ll
 
+output=$(lli tester.ll)
 
-if lli-3.7 tester.ll = 34;
+if [ "$output" == "Hello World" ];
 then
-	echo "helloworld test successful! The number 34 should be visible on terminal"
+	echo "helloworld test successful! 'Hello World' should be visible on terminal"
 else
 	echo "helloworld test failed"
 fi
