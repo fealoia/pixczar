@@ -114,7 +114,6 @@ let translate (globals, functions) =
       | SStringLit st -> L.build_global_stringptr st "tmp" builder
       | SFliteral l -> L.const_float float_t l
       | SBoolLit b -> L.const_int i1_t (if b then 1 else 0)
-      | SStringLit s -> stringlit_gen builder s
       | SNoexpr -> L.const_int i32_t 0
       | SId s -> L.build_load (lookup s) s builder 
       | SAssign (e1, e2) -> let e' = expr builder e1 in
@@ -124,7 +123,7 @@ let translate (globals, functions) =
            | _ -> to_imp2 "SAssign type"
           in check_var
       | SCall ("printf", [e]) ->
-        L.build_call printf_func [| int_format_str ; (expr builder e) |]
+        L.build_call printf_func [| string_format_str ; (expr builder e) |]
         "printf" builder
       | SBinop (e1, op, e2) -> binop_gen builder e1 op e2
       | SUnop(op, e) -> unop_gen builder op e

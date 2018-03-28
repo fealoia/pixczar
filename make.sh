@@ -41,7 +41,7 @@ done
 
 
 
-if lli tester.ll = 34;
+if lli-3.7 tester.ll = 34;
 then
 	echo "helloworld test successful! The number 34 should be visible on terminal"
 else
