@@ -4,6 +4,10 @@ open Sast
 
 module StringMap = Map.Make(String)
 
+module Hash = Hashtbl
+
+let params:(string, L.llvalue) Hash.t = Hash.create 100
+
 (* Code Generation from the SAST. Returns an LLVM module if successful,
    throws an exception if something is wrong. *)
 let translate (globals, functions) =
@@ -109,15 +113,15 @@ let translate (globals, functions) =
       | SFliteral l -> L.const_float float_t l
       | SBoolLit b -> L.const_int i1_t (if b then 1 else 0)
       | SNoexpr -> L.const_int i32_t 0
-      | SId s -> L.build_load (lookup s) s builder
+      | SId s -> Hash.find params s
       | SAssign (e1, e2) -> let e' = expr builder e1 in
           let check_var = match e1 with
-             (_, _, SId(s)) -> let _ = L.build_store e' (lookup s) builder in e'
+             (_, _, SId(s)) -> let _ = Hash.add params s (expr builder e2)
            | (_, _, SAccessArray(s, e)) -> to_imp "this"
            | _ -> to_imp "SAssign type"
           in check_var
       | SCall ("printf", [e]) ->
-        L.build_call printf_func [| int_format_str ; (expr builder e) |]
+        L.build_call printf_func [| float_format_str ; (expr builder e) |]
         "printf" builder
       | SBinop (e1, op, e2) -> binop_gen builder e1 op e2
       | SUnop(op, e) -> unop_gen builder op e
@@ -253,12 +257,11 @@ let translate (globals, functions) =
 	  let _ = L.build_cond_br bool_val body_bb merge_bb pred_builder in
 	  L.builder_at_end context merge_bb
 
-      (* Implement for loops as while loops! *)
       | SFor (e1, e2, e3, body) -> stmt builder
 	    (map, ( SBlock [(map, SExpr e1) ; (map, SWhile (e2, (map, SBlock [body ;
             (map, SExpr e3)]))) ]))
       | SVarDecs(svar) -> match svar with
-          ((t, s), e) :: tl -> let _ = L.build_store (expr builder e) (lookup s) builder
+          ((t, s), e) :: tl -> let _ = (Hash.add params s (expr builder e))
                 in builder
       | s -> to_imp (string_of_sstmt (map, ss))
     in
