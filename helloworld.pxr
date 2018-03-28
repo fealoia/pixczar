@@ -1,22 +1,4 @@
 Void main() {
-    printf("hello");
-/*
-    //Initializing 5 seconds of frames
-    Frame[] frames = new Frame[150];
-
-    Pix ball = new Pix();
-    ball.makeEllipse(300, 300, [255, 255, 255]);
-
-    //Place ball in middle of screen
-    Placement placeBall = new Placement(ball, 375, 375, 1, 1);
-    
-    Int i = 0;
-    for(i; i < 150; i = i + 1) {
-        frames[i] = new Frame(750, 750);
-        frames[i].addPlacement(placeBall);
-    }
-
-    Int fps = 30;
-    render(frames, fps);
-    */
+   String x = "Hello World";
+   printf(x);
 }
