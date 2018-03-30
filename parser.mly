@@ -23,7 +23,7 @@
 %left EQ NEQ
 %left LT GT LEQ GEQ
 %left PLUS MINUS
-%left TIMES DIVIDE MOD
+%left TIMES DIVIDE MOD DOT
 %right NOT NEG
 
 %%
@@ -145,7 +145,7 @@ expr:
   | LBRACK args_opt RBRACK                 { CreateArray($2)                }
   | ID LBRACK expr RBRACK                  { AccessArray($1, $3)            }
   | ID LBRACK LITERAL COLON LITERAL RBRACK { SubArray($1, $3, $5)           }
-  | ID COLON ID                            { AccessStruct($1, $3)           }
+  | expr DOT ID                            { AccessStruct($1, $3)           }
   | expr PLUS PLUS                         { PostUnop($1, PostIncrement)    }
   | expr MINUS MINUS                       { PostUnop($1, PostDecrement)    }
 

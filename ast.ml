@@ -26,7 +26,7 @@ type expr =
   | CreateArray of expr list
   | SubArray of string * int * int
   | AccessArray of string * expr
-  | AccessStruct of string * string
+  | AccessStruct of expr * string
 
 type bind = typ * string
 
@@ -117,7 +117,7 @@ let rec string_of_expr = function
   | SubArray(id, i1, i2) -> id ^ "[" ^ string_of_int i1 ^ ":" ^ string_of_int i2 ^ "]"
   | AccessArray(id, e2) -> id ^ "[" ^ string_of_expr e2 ^ "]"
   | NewArray(t, i) -> "new " ^ string_of_typ t ^ "[" ^ string_of_int i ^ "]"
-  | AccessStruct(i1, i2) -> i1 ^ "." ^ i2
+  | AccessStruct(e, i) -> string_of_expr e ^ "." ^ i
 
 let string_of_vdecl ((t, id), value) = 
   match value with
