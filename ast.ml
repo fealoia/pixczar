@@ -1,7 +1,7 @@
 type op = Add | Sub | Mult | Div | Equal | Neq | Less | Leq | Greater | Geq |
           And | Or | Mod
 
-type uop = Neg | Not
+type uop = Neg | Not | PreIncrement | PreDecrement
 
 type post_uop = PostIncrement | PostDecrement
 
@@ -76,6 +76,8 @@ let string_of_op = function
 let string_of_uop = function
     Neg -> "-"
   | Not -> "!"
+  | PreIncrement -> "++"
+  | PreDecrement -> "--"
 
 let string_of_post_uop = function
     PostIncrement-> "++"
@@ -104,8 +106,8 @@ let rec string_of_expr = function
   | Id(s) -> s
   | Binop(e1, o, e2) ->
       string_of_expr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_expr e2
-  | Unop(o, e) -> string_of_uop o ^ string_of_expr e
-  | PostUnop(e, o) -> string_of_expr e ^ string_of_post_uop o
+  | Unop(o, e) -> string_of_uop o ^ "(" ^ string_of_expr e ^ ")"
+  | PostUnop(e, o) -> "(" ^ string_of_expr e ^ ")" ^ string_of_post_uop o
   | Assign(e1, e2) -> string_of_expr e1 ^ " = " ^ string_of_expr e2
   | Call(f, el) ->
       f ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ")"

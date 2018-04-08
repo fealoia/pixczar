@@ -1,7 +1,7 @@
 %{open Ast%}
 
 %token SEMI LPAREN RPAREN LBRACE RBRACE COMMA PLUS MINUS TIMES DIVIDE ASSIGN MOD
-%token NOT EQ NEQ LT LEQ GT GEQ AND OR
+%token NOT EQ NEQ LT LEQ GT GEQ AND OR INCREMENT DECREMENT
 %token LBRACK RBRACK COLON
 %token RETURN IF ELSEIF ELSE FOR WHILE BREAK CONTINUE
 %token INT BOOL FLOAT STRING VOID PIX PLACEMENT FRAME NULL NEW DOT STRUCT
@@ -23,8 +23,10 @@
 %left EQ NEQ
 %left LT GT LEQ GEQ
 %left PLUS MINUS
-%left TIMES DIVIDE MOD DOT
+%left TIMES DIVIDE MOD
 %right NOT NEG
+%right PREINCREMENT PREDECREMENT
+%left DOT INCREMENT DECREMENT
 
 %%
 
@@ -146,8 +148,10 @@ expr:
   | ID LBRACK expr RBRACK                  { AccessArray($1, $3)            }
   | ID LBRACK LITERAL COLON LITERAL RBRACK { SubArray($1, $3, $5)           }
   | expr DOT ID                            { AccessStruct($1, $3)           }
-  | expr PLUS PLUS                         { PostUnop($1, PostIncrement)    }
-  | expr MINUS MINUS                       { PostUnop($1, PostDecrement)    }
+  | INCREMENT expr %prec PREINCREMENT      { Unop(PreIncrement, $2)         }
+  | DECREMENT expr %prec PREDECREMENT      { Unop(PreDecrement, $2)         }
+  | expr INCREMENT                         { PostUnop($1, PostIncrement)    }
+  | expr DECREMENT                         { PostUnop($1, PostDecrement)    }
 
 args_opt:
     /* nothing */ { [] }

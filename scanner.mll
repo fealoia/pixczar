@@ -36,6 +36,8 @@ rule token = parse
 | ">="     { GEQ }
 | "&&"     { AND }
 | "||"     { OR }
+| "++"     { INCREMENT }
+| "--"     { DECREMENT }
 | "!"      { NOT }
 | "if"     { IF }
 | "else"   { ELSE }
