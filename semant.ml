@@ -245,11 +245,11 @@ let check (globals, functions) =
       | ElseIf(x,y) -> raise (Failure("not yet implemented"))
       | CreateStruct(x,y) -> raise (Failure("not yet implemented"))
       | For(e1, e2, e3, st) -> let (x,y,z) = check_expr e1 map in
-                               let (x', y',z') = check_bool_expr e2 x in
+                               let (x', y',z') = check_expr e2 x in
                                let (x'',y'',z'') = check_expr e3 x' in
       	  (x'', SFor((x,y,z), (x',y',z'), (x'',y'',z''), check_stmt st x''))
 
-      | While(p, s) -> (map, SWhile(check_bool_expr p map, check_stmt s map))
+      | While(p, s) -> (map, SWhile(check_expr p map, check_stmt s map))
       | Return e -> let (map, t, e') = check_expr e map in
         if t = func.typ then (map, SReturn (map, t, e'))
         else raise (
