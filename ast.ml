@@ -42,6 +42,7 @@ type stmt =
   | While of expr * stmt
   | Break 
   | Continue
+  | Include of string
   | VarDecs of var list
   | ObjCall of expr * string * expr list
   | CreateStruct of string * var list list
@@ -145,6 +146,7 @@ let rec string_of_stmt = function
   | While(e, s) -> "while (" ^ string_of_expr e ^ ") " ^ string_of_stmt s
   | Break -> "break;\n"
   | Continue -> "continue;\n"
+  | Include(s) -> "include " ^ s ^";\n"
   | VarDecs(vars) -> String.concat "," (List.map string_of_vdecl vars) ^ ";\n"
   | ObjCall(e, f, el) -> string_of_expr e ^ "." ^ f ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ");\n"
   | CreateStruct(s, vdecls) -> "Struct " ^ s ^ "\n{\n" ^ 

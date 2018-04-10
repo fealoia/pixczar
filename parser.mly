@@ -3,7 +3,7 @@
 %token SEMI LPAREN RPAREN LBRACE RBRACE COMMA PLUS MINUS TIMES DIVIDE ASSIGN MOD
 %token NOT EQ NEQ LT LEQ GT GEQ AND OR INCREMENT DECREMENT
 %token LBRACK RBRACK COLON
-%token RETURN IF ELSEIF ELSE FOR WHILE BREAK CONTINUE
+%token RETURN IF ELSEIF ELSE FOR WHILE BREAK CONTINUE INCLUDE
 %token INT BOOL FLOAT STRING VOID PIX PLACEMENT FRAME NULL NEW DOT STRUCT
 %token <int> LITERAL
 %token <bool> BLIT
@@ -103,6 +103,7 @@ stmt:
   | WHILE LPAREN expr RPAREN stmt             { While($3, $5)                      }
   | BREAK SEMI                                { Break                              }
   | CONTINUE SEMI                             { Continue                           }
+  | INCLUDE SLIT SEMI                         { Include($2)                        }
   | vdecl_list SEMI                           { VarDecs(List.rev $1)               }
   | expr DOT ID LPAREN args_opt RPAREN SEMI   { ObjCall($1, $3, $5)                }
   | STRUCT ID LBRACE struct_vdecl_list SEMI RBRACE SEMI

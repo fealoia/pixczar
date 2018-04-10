@@ -38,6 +38,7 @@ and ss =
   | SWhile of sexpr * sstmt
   | SBreak
   | SContinue
+  | SInclude of string
   | SVarDecs of svar list
   | SObjCall of sexpr * string * sexpr list
   | SCreateStruct of string * svar list list
@@ -60,7 +61,7 @@ let rec string_of_sexpr (_, t, e) =
   | SFliteral(l) -> string_of_float l
   | SBoolLit(true) -> "true"
   | SBoolLit(false) -> "false"
-  | SStringLit(l) -> l
+  | SStringLit(l) -> "\"" ^ l ^ "\""
   | SId(s) -> s
   | SBinop(e1, o, e2) ->
       string_of_sexpr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_sexpr e2
@@ -106,6 +107,7 @@ let rec string_of_sstmt (map, e) = match e with
   | SWhile(e, s) -> "while (" ^ string_of_sexpr e ^ ") " ^ string_of_sstmt s
   | SBreak -> "break;\n"
   | SContinue -> "continue;\n"
+  | SInclude(s) -> "include " ^ s ^ ";\n"
   | SVarDecs(vars) -> String.concat "," (List.map string_of_svdecl vars) ^ ";\n"
   | SObjCall(e, f, el) -> string_of_sexpr e ^ "." ^ f ^ "(" ^ String.concat ", " (List.map string_of_sexpr el) ^ ");\n"
   | SCreateStruct(s, vdecls) -> "Struct " ^ s ^ "\n{\n" ^
