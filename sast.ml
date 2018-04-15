@@ -32,7 +32,7 @@ and ss =
     SBlock of sstmt list
   | SExpr of sexpr
   | SReturn of sexpr
-  | SIf of sexpr * sstmt * sstmt list * sstmt
+  | SIf of sexpr * sstmt * sstmt * sstmt
   | SElseIf of sexpr * sstmt
   | SFor of sexpr * sexpr * sexpr * sstmt
   | SWhile of sexpr * sstmt
@@ -97,9 +97,9 @@ let rec string_of_sstmt (map, e) = match e with
   | SExpr(expr) -> string_of_sexpr expr ^ ";\n";
   | SReturn(expr) -> "return " ^ string_of_sexpr expr ^ ";\n";
   | SIf(e, s, stmts, (map, SBlock([]))) -> "if (" ^ string_of_sexpr e ^ ")\n" ^ string_of_sstmt s
-      ^ String.concat "" (List.map string_of_sstmt stmts)
+      ^ string_of_sstmt stmts
   | SIf(e, s1, stmts, s2) ->  "if (" ^ string_of_sexpr e ^ ")\n" ^
-      string_of_sstmt s1 ^ String.concat "" (List.map string_of_sstmt stmts) ^ "else\n" ^ string_of_sstmt s2
+      string_of_sstmt s1 ^ string_of_sstmt stmts ^ "else\n" ^ string_of_sstmt s2
   | SElseIf(e, s) -> "else if (" ^ string_of_sexpr e ^ ")\n" ^ string_of_sstmt s
   | SFor(e1, e2, e3, s) ->
       "for (" ^ string_of_sexpr e1  ^ " ; " ^ string_of_sexpr e2 ^ " ; " ^

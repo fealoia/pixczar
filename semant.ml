@@ -241,9 +241,10 @@ let check (globals, functions) =
     (* Return a semantically-checked statement i.e. containing sexprs *)
     let rec check_stmt e map= match e with
         Expr e -> (map, SExpr (check_expr e map))
-      | If(w,x,y,z) -> raise (Failure("not yet implemented"))
-      | ElseIf(x,y) -> raise (Failure("not yet implemented"))
-      | CreateStruct(x,y) -> raise (Failure("not yet implemented"))
+      | If(e, s1, s2, s3) -> (map, SIf(check_expr e map, check_stmt s1 map,
+                check_stmt s2 map, check_stmt s3 map))
+      | ElseIf(e, s) -> (map, SElseIf(check_expr e map, check_stmt s map))
+      | CreateStruct(x,y) -> raise (Failure("CreateStruct not yet implemented"))
       | For(e1, e2, e3, st) -> let (x,y,z) = check_expr e1 map in
                                let (x', y',z') = check_expr e2 x in
                                let (x'',y'',z'') = check_expr e3 x' in
