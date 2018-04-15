@@ -103,7 +103,7 @@ let rec string_of_expr = function
   | Fliteral(l) -> string_of_float l
   | BoolLit(true) -> "true"
   | BoolLit(false) -> "false"
-  | StringLit(l) -> l
+  | StringLit(l) -> "\"" ^ l ^ "\""
   | Id(s) -> s
   | Binop(e1, o, e2) ->
       string_of_expr e1 ^ " " ^ string_of_op o ^ " " ^ string_of_expr e2

@@ -188,7 +188,7 @@ let translate (globals, functions) =
           | A.Leq     -> L.build_fcmp L.Fcmp.Ole
           | A.Greater -> L.build_fcmp L.Fcmp.Ogt
           | A.Geq     -> L.build_fcmp L.Fcmp.Oge
-          | A.And | A.Or ->
+          | A.And | A.Or | A.Mod ->
               raise (Failure "internal error: semant should have rejected and/or on float")
           ) e1' e2' "tmp" builder
         else (match op with
@@ -268,10 +268,10 @@ let translate (globals, functions) =
       | SFor (e1, e2, e3, body) -> stmt builder
 	    (map, ( SBlock [(map, SExpr e1) ; (map, SWhile (e2, (map, SBlock [body ;
             (map, SExpr e3)]))) ]))
-      | SVarDecs(svar) -> match svar with
+      | SVarDecs(svar) -> (match svar with
           ((t, s), e) :: tl -> let _ = (Hash.add params s (expr builder e))
-                in builder
-     (* | SIf (predicate, then_stmt, elseif_stmts, else_stmt) ->
+                in builder)
+      | SIf (predicate, then_stmt, elseif_stmts, else_stmt) ->
          let bool_val = expr builder predicate in
 	 let merge_bb = L.append_block context "merge" the_function in
          let branch_instr = L.build_br merge_bb in
@@ -285,7 +285,7 @@ let translate (globals, functions) =
 	 let () = add_terminal else_builder branch_instr in
 
 	 let _ = L.build_cond_br bool_val then_bb else_bb builder in
-	 L.builder_at_end context merge_bb*)
+	 L.builder_at_end context merge_bb
       | s -> to_imp (string_of_sstmt (map, ss))
     in
     
