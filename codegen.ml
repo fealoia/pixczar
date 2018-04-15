@@ -196,6 +196,7 @@ let translate (globals, functions) =
           | A.Sub     -> L.build_sub
           | A.Mult    -> L.build_mul
           | A.Div     -> L.build_sdiv
+          | A.Mod     -> L.build_srem
           | A.And     -> L.build_and
           | A.Or      -> L.build_or
           | A.Equal   -> L.build_icmp L.Icmp.Eq
@@ -270,6 +271,21 @@ let translate (globals, functions) =
       | SVarDecs(svar) -> match svar with
           ((t, s), e) :: tl -> let _ = (Hash.add params s (expr builder e))
                 in builder
+     (* | SIf (predicate, then_stmt, elseif_stmts, else_stmt) ->
+         let bool_val = expr builder predicate in
+	 let merge_bb = L.append_block context "merge" the_function in
+         let branch_instr = L.build_br merge_bb in
+
+	 let then_bb = L.append_block context "then" the_function in
+         let then_builder = stmt (L.builder_at_end context then_bb) then_stmt in
+	 let () = add_terminal then_builder branch_instr in
+
+	 let else_bb = L.append_block context "else" the_function in
+         let else_builder = stmt (L.builder_at_end context else_bb) else_stmt in
+	 let () = add_terminal else_builder branch_instr in
+
+	 let _ = L.build_cond_br bool_val then_bb else_bb builder in
+	 L.builder_at_end context merge_bb*)
       | s -> to_imp (string_of_sstmt (map, ss))
     in
     
