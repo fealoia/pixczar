@@ -76,8 +76,8 @@ let check (globals, functions) =
 
     (* Raise an exception if the given rvalue type cannot be assigned to
        the given lvalue type *)
-    let check_assign lvaluet rvaluet err = match lvaluet with 
-        Pix | Placement | Frame | Array(_) | Struct(_) -> 
+    let check_assign lvaluet rvaluet err = match lvaluet with
+        Pix | Placement | Frame | Array(_) | Struct(_) ->
             if lvaluet = rvaluet || rvaluet = Null then lvaluet else raise (Failure err)
        | _ -> if lvaluet = rvaluet then lvaluet else raise (Failure err)
     in
@@ -142,7 +142,7 @@ let check (globals, functions) =
                 (t2 = Int || t2 = Float)) -> (match same with
                       true -> t1
                     | false -> Float)
-          | Sub | Mult | Div when (t1 = Float || t1 = Int) && 
+          | Sub | Mult | Div when (t1 = Float || t1 = Int) &&
                 (t2 = Float || t2 = Int) -> (match same with
                       true -> t1
                     | false -> Float)
@@ -241,7 +241,7 @@ let check (globals, functions) =
     in
 
     (* Return a semantically-checked statement i.e. containing sexprs *)
-    let rec check_stmt e map= match e with
+    let rec check_stmt e map = match e with
         Expr e -> (map, SExpr (check_expr e map))
       | If(e, s1, s2, s3) -> (map, SIf(check_expr e map, check_stmt s1 map,
                 check_stmt s2 map, check_stmt s3 map))
@@ -298,7 +298,7 @@ let check (globals, functions) =
                              in (if StringMap.mem s map then raise ( Failure ("Duplicate variable declaration " ^ s))
                                  else let new_symbols = StringMap.add s t map
                                       in let (map, t2, _) = check_expr e new_symbols
-                                         in if t <> t2 then raise ( Failure (
+                                         in if t <> t2 && t2 <> Void then raise ( Failure (
                                            "LHS type of " ^ string_of_typ t ^ " not the same as " ^
                                            "RHS type of " ^ string_of_typ t2 )) else (new_symbols, SVarDecs([(b, check_expr e new_symbols)])))
 

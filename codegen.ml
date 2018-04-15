@@ -116,7 +116,7 @@ let translate (globals, functions) =
 
     let rec expr builder ((_, _, e) : sexpr) = match e with
         (* 42  ----->  i32 42 *)
-	SLiteral i -> L.const_int i32_t i
+        SLiteral i -> L.const_int i32_t i
       | SStringLit st -> L.build_global_stringptr st "tmp" builder
       | SFliteral l -> L.const_float float_t l
       | SBoolLit b -> L.const_int i1_t (if b then 1 else 0)
@@ -159,20 +159,20 @@ let translate (globals, functions) =
 
     and id_gen builder id is_deref =
       if is_deref then
-        if Hash.mem local_values id then
-          let _val = Hash.find local_values id in
-          L.build_load _val id builder
+          if Hash.mem local_values id then
+            let _val = Hash.find local_values id in
+            L.build_load _val id builder
         else if Hash.mem local_params id then
           Hash.find local_params id
         else
-          raise(Failure("Unknown variable " ^ id))
+          raise(Failure("Unknown variable deref " ^ id))
       else
         if Hash.mem local_values id then
           Hash.find local_values id
         else if Hash.mem local_params id then
           Hash.find local_params id
         else
-          raise(Failure("Unknown variable " ^ id))
+          raise(Failure("Unknown variable nonderef" ^ id))
 
     and assign_gen builder se1 se2 =
       let (_, t1, e1) = se1 in
@@ -296,7 +296,9 @@ let translate (globals, functions) =
       match L.block_terminator (L.insertion_block builder) with
 	Some _ -> ()
       | None -> ignore (instr builder) in
-
+(*
+  This function generates code for statements
+*)
     let rec stmt builder (map, ss) = match ss with
         SExpr e -> let _ = expr builder e in builder
       | SBlock sl -> List.fold_left stmt builder sl
@@ -307,34 +309,37 @@ let translate (globals, functions) =
       | SWhile (predicate, body) ->
           (* First create basic block for condition instructions -- this will
           serve as destination in the case of a loop *)
-	  let pred_bb = L.append_block context "while" the_function in
-          (* In current block, branch to predicate to execute the condition *)
-	  let _ = L.build_br pred_bb builder in
+        let pred_bb = L.append_block context "while" the_function in
+              (* In current block, branch to predicate to execute the condition *)
+        let _ = L.build_br pred_bb builder in
 
-          (* Create the body's block, generate the code for it, and add a branch
-          back to the predicate block (we always jump back at the end of a while
-          loop's body, unless we returned or something) *)
-	  let body_bb = L.append_block context "while_body" the_function in
-          let while_builder = stmt (L.builder_at_end context body_bb) body in
-	  let () = add_terminal while_builder (L.build_br pred_bb) in
+              (* Create the body's block, generate the code for it, and add a branch
+              back to the predicate block (we always jump back at the end of a while
+              loop's body, unless we returned or something) *)
+        let body_bb = L.append_block context "while_body" the_function in
+              let while_builder = stmt (L.builder_at_end context body_bb) body in
+        let () = add_terminal while_builder (L.build_br pred_bb) in
 
-          (* Generate the predicate code in the predicate block *)
-	  let pred_builder = L.builder_at_end context pred_bb in
-	  let bool_val = expr pred_builder predicate in
+              (* Generate the predicate code in the predicate block *)
+        let pred_builder = L.builder_at_end context pred_bb in
+        let bool_val = expr pred_builder predicate in
 
-          (* Hook everything up *)
-	  let merge_bb = L.append_block context "merge" the_function in
-	  let _ = L.build_cond_br bool_val body_bb merge_bb pred_builder in
-	  L.builder_at_end context merge_bb
+              (* Hook everything up *)
+        let merge_bb = L.append_block context "merge" the_function in
+        let _ = L.build_cond_br bool_val body_bb merge_bb pred_builder in
+        L.builder_at_end context merge_bb
 
       | SFor (e1, e2, e3, body) -> stmt builder
 	    (map, ( SBlock [(map, SExpr e1) ; (map, SWhile (e2, (map, SBlock [body ;
             (map, SExpr e3)]))) ]))
-(*
-      | SVarDecs(svar) -> match svar with
-          ((t, s), e) :: tl -> let _ = (Hash.add params s (expr builder e))
-                in builder
-*)
+      | SVarDecs(svar_list) ->
+        let svar_dec_gen svar =
+          let ((t, s), e) = svar in
+
+            Hash.add local_params s (expr builder e) in
+        let _ = List.iter svar_dec_gen svar_list in
+        builder
+
       | s -> to_imp (string_of_sstmt (map, ss))
     in
 
