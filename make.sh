@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 export PATH=$PATH:/usr/local/opt/llvm/bin
 
 passing_tests="tests/passing_tests/*"

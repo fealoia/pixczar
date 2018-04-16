@@ -333,7 +333,6 @@ let translate (globals, functions) =
       | SFor (e1, e2, e3, body) -> stmt builder
 	    (map, ( SBlock [(map, SExpr e1) ; (map, SWhile (e2, (map, SBlock [body ;
             (map, SExpr e3)]))) ]))
-<<<<<<< HEAD
       | SVarDecs(svar_list) ->
         let svar_dec_gen svar =
           let ((t, s), e) = svar in
@@ -342,13 +341,7 @@ let translate (globals, functions) =
         let _ = List.iter svar_dec_gen svar_list in
         builder
 
-     (* | SIf (predicate, then_stmt, elseif_stmts, else_stmt) ->
-=======
-      | SVarDecs(svar) -> (match svar with
-          ((t, s), e) :: tl -> let _ = (Hash.add params s (expr builder e))
-                in builder)
       | SIf (predicate, then_stmt, elseif_stmts, else_stmt) ->
->>>>>>> 51e10f189339239307f74aa175685b8cd1fe978d
          let bool_val = expr builder predicate in
 	 let merge_bb = L.append_block context "merge" the_function in
          let branch_instr = L.build_br merge_bb in
