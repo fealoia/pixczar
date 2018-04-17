@@ -220,16 +220,29 @@ let check (globals, functions) =
               (x,y,z) :: tl -> (map, Array(y), SCreateArray(result))
             | _ -> (map, Array(Notyp), SCreateArray(result))
           in arr
-      | AccessArray(id, e2) -> (* ToDo check idx *)
-          let id_err = "Illegal identifier " ^ id
-          in let idx_err = "Illegal index " ^ string_of_expr e2 ^ " on identifier" ^ id
+      | AccessArray(id, e2) -> (* ToDo check idx -- do we need? there's no way to check length of array in semant.ml if that's what check idx should do*)
+(*
+          let id_err = "Illegal identifier " ^ id in
+*)
+          let idx_err = "Illegal index " ^ string_of_expr e2 ^ " on identifier" ^ id
+          in let typ_err = id ^ " is not an array"
           in let (map2, et2, e2') = check_expr e2 map
           in let check_access = match (type_of_identifier id map) with
-              (Array(typ)) -> if false then raise (Failure (idx_err)) else
-                  (map2, typ, SAccessArray(id, (map2, et2, e2')))
-            | _ -> raise (Failure (id_err))
+              (Array(typ)) -> (map2, typ, SAccessArray(id, (map2, et2, e2')))
+            | _            -> raise (Failure (typ_err))
           in check_access
-      | SubArray(s, beg, end') -> if true then raise (Failure ("SubArray not yet implemented")) else (map, Notyp, SSubArray("", 0, 0))
+      | SubArray(id, beg, end') ->
+        let typ_err = id ^ " is not an array"
+        in let check_access =
+          match (type_of_identifier id map) with
+            (Array(typ)) -> 0
+          | _            -> raise (Failure (typ_err))
+           in
+        if beg > end' then raise(Failure("begin index must be less than end index for array " ^ id))
+(* -1 not parsed correctly so can't do this check
+        else if (beg < 0 || end' < 0) then raise(Failure("indexes must be positive for array " ^ id))
+*)
+             else check_access; (map, Notyp, SSubArray(id, beg, end'))
       | AccessStruct(s, field) -> if true then raise (Failure ("AccessStructure not yet implemented")) else (map, Notyp, SSubArray("", 0, 0))
     in
 
