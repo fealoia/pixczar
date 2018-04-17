@@ -158,21 +158,28 @@ let translate (globals, functions) =
       | _ -> to_imp ""
 
     and id_gen builder id is_deref =
+(*
+      let () = Printf.printf "id_gen %s %B \n%!" id is_deref in
+*)
       if is_deref then
+        if Hash.mem local_params id then
+          Hash.find local_params id
+        else
           if Hash.mem local_values id then
             let _val = Hash.find local_values id in
             L.build_load _val id builder
-        else if Hash.mem local_params id then
-          Hash.find local_params id
-        else
+          else
           raise(Failure("Unknown variable deref " ^ id))
       else
+(*
+      let () = Printf.printf "notderef %s %B \n%!" id is_deref in
+*)
         if Hash.mem local_values id then
           Hash.find local_values id
         else if Hash.mem local_params id then
           Hash.find local_params id
         else
-          raise(Failure("Unknown variable nonderef" ^ id))
+          raise(Failure("Unknown variable nonderef " ^ id))
 
     and assign_gen builder se1 se2 =
       let (_, t1, e1) = se1 in
@@ -336,10 +343,14 @@ let translate (globals, functions) =
       | SVarDecs(svar_list) ->
         let svar_dec_gen svar =
           let ((t, s), e) = svar in
-
-            Hash.add local_params s (expr builder e) in
-        let _ = List.iter svar_dec_gen svar_list in
-        builder
+          let lltype = ltype_of_typ t in
+          let alloca = L.build_alloca lltype s builder in
+            Hash.add local_values s alloca;
+          let (_, _, sx) = e in
+            match sx with
+                SAssign(lhs, rhs) -> assign_gen builder lhs rhs
+              | _ -> alloca in
+        svar_dec_gen (List.nth svar_list 0); builder (* for now just do 1st one *)
 
       | SIf (predicate, then_stmt, elseif_stmts, else_stmt) ->
          let bool_val = expr builder predicate in
