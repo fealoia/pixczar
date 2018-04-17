@@ -6,7 +6,6 @@ module StringMap = Map.Make(String)
 module Hash = Hashtbl
 
 let global_classes:(string, L.lltype) Hash.t = Hash.create 50
-let local_params:(string, L.llvalue) Hash.t = Hash.create 50
 let local_values:(string, L.llvalue) Hash.t = Hash.create 50
 let class_self:(string, L.llvalue) Hash.t = Hash.create 50
 let class_fields:(string, int) Hash.t = Hash.create 50
@@ -106,20 +105,16 @@ let translate (globals, functions) =
       List.fold_left add_local formals fdecl.slocals
     in
 
-    let lookup n = try StringMap.find n local_vars
-                   with Not_found -> StringMap.find n global_vars
-    in
-
     let rec expr builder ((m, t, e) : sexpr) = match e with
         SLiteral i -> L.const_int i32_t i
       | SStringLit st -> L.build_global_stringptr st "tmp" builder
       | SFliteral l -> L.const_float float_t l
       | SBoolLit b -> L.const_int i1_t (if b then 1 else 0)
       | SNoexpr -> L.const_int i32_t 0
-      | SId s -> id_gen builder s
+      | SId s -> id_gen builder s true
       | SAssign(e1, e2) -> assign_gen builder e1 e2
       | SCall ("printf", [e]) ->
-        L.build_call printf_func [| int_format_str ; (expr builder e) |] "printf" builder
+        L.build_call printf_func [| string_format_str ; (expr builder e) |] "printf" builder
       | SBinop (e1, op, e2) -> binop_gen builder e1 op e2
       | SUnop(op, e) -> unop_gen builder op e
       | SNullLit -> L.const_null i32_t
@@ -153,32 +148,29 @@ let translate (globals, functions) =
 *)
       | _ -> to_imp ""
 
-    and id_gen builder id =
-          if Hash.mem local_values id then
+    and id_gen builder id deref =
+        if Hash.mem local_values id then
             let _val = Hash.find local_values id in
-            L.build_load _val id builder
-        else if Hash.mem local_params id then
-          Hash.find local_params id
+            if deref = true then
+              L.build_load _val id builder
+            else _val
         else
-          raise(Failure("Unknown variable deref " ^ id))
+          raise(Failure("Unknown variable" ^ id))
 
     and assign_gen builder se1 se2 =
       let (_, t1, e1) = se1 in
       let (_, t2, e2) = se2 in
       
       let rhs = (match e2 with
-          SId(id) -> id_gen builder id
+          SId(id) -> id_gen builder id true
         | SAccessArray(name, idx) -> access_array_gen builder name idx true
         | _ -> expr builder se2) in 
       let rhs = (match t2 with
           A.Null -> L.const_null (ltype_of_typ t2)
         | _ -> rhs) in
       let _ = (match e1 with
-          SId id -> let lhs = id_gen builder id in
-            let lltype = ltype_of_typ t2 in
-            let alloca = L.build_alloca lltype "new_typ" builder in
-            let _ = ignore(L.build_store rhs alloca builder) in 
-            Hash.add local_values id alloca
+          SId id -> let lhs = id_gen builder id false in
+            ignore(L.build_store rhs lhs builder)
         | SAccessArray(name, idx) -> let lhs = access_array_gen builder name idx
             true in ignore(L.build_store rhs lhs builder)
         | _ -> raise(Failure("Unable to assign " ^ string_of_sexpr se1 ^ " to "
@@ -197,7 +189,7 @@ let translate (globals, functions) =
       List.iteri array_assign el;
 
     and access_array_gen builder name index is_assign =
-      let arr = id_gen builder name in
+      let arr = id_gen builder name true in
       let index = expr builder index in
       let arr_val = L.build_gep arr [| index |] "arr_access" builder in
       if is_assign then arr_val
