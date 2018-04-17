@@ -111,23 +111,15 @@ let translate (globals, functions) =
     in
 
     let rec expr builder ((_, _, e) : sexpr) = match e with
-        (* 42  ----->  i32 42 *)
         SLiteral i -> L.const_int i32_t i
       | SStringLit st -> L.build_global_stringptr st "tmp" builder
       | SFliteral l -> L.const_float float_t l
       | SBoolLit b -> L.const_int i1_t (if b then 1 else 0)
       | SNoexpr -> L.const_int i32_t 0
-      | SId s -> id_gen builder s true
-(*
-      | SAssign (e1, e2) -> let e' = expr builder e1 in
-          let check_var = match e1 with
-             (_, _, SId(s)) -> let _ = Hash.add params s (expr builder e2) in e'
-           | _ -> to_imp2 "SAssign type"
-          in check_var
-*)
+      | SId s -> id_gen builder s
       | SAssign(e1, e2) -> assign_gen builder e1 e2
       | SCall ("printf", [e]) ->
-        L.build_call printf_func [| int_format_str ; (expr builder e) |] "printf" builder
+        L.build_call printf_func [| string_format_str ; (expr builder e) |] "printf" builder
       | SBinop (e1, op, e2) -> binop_gen builder e1 op e2
       | SUnop(op, e) -> unop_gen builder op e
       | SNullLit -> L.const_null i32_t
@@ -151,8 +143,7 @@ let translate (globals, functions) =
 *)
       | _ -> to_imp ""
 
-    and id_gen builder id is_deref =
-      if is_deref then
+    and id_gen builder id =
           if Hash.mem local_values id then
             let _val = Hash.find local_values id in
             L.build_load _val id builder
@@ -160,43 +151,28 @@ let translate (globals, functions) =
           Hash.find local_params id
         else
           raise(Failure("Unknown variable deref " ^ id))
-      else
-        if Hash.mem local_values id then
-          Hash.find local_values id
-        else if Hash.mem local_params id then
-          Hash.find local_params id
-        else
-          raise(Failure("Unknown variable nonderef" ^ id))
 
     and assign_gen builder se1 se2 =
       let (_, t1, e1) = se1 in
       let (_, t2, e2) = se2 in
-
-      let (lhs, is_obj_access) = match e1 with
-          SId id -> (id_gen builder id false, false)
-        | SAccessArray(name, idx) -> (access_array_gen builder name idx true, true)
-        | _ -> raise(Failure("Unable to assign " ^ string_of_sexpr se1 ^ " to "
-                             ^ string_of_sexpr se2))
-      in
-
-      let rhs = match e2 with
-          SId(id) -> (match t2 with
-              A.Pix | A.Placement | A.Frame | A.String
-              (* | A.Array | A.Struct *) -> id_gen builder id false
-            | _ -> id_gen builder id true)
+      
+      let rhs = (match e2 with
+          SId(id) -> id_gen builder id
         | SAccessArray(name, idx) -> access_array_gen builder name idx true
-        | _ -> expr builder se2
-      in
-
-      let rhs = match t2 with
-          A.Pix | A.Placement | A.Frame | A.String
-          (* | A.Array | A.Struct *) -> if is_obj_access then rhs
-                                else L.build_load rhs "tmp" builder
-        | A.Null -> L.const_null (ltype_of_typ t2)
-        | _ -> rhs
-      in
-
-      ignore(L.build_store rhs lhs builder);
+        | _ -> expr builder se2) in 
+      let rhs = (match t2 with
+          A.Null -> L.const_null (ltype_of_typ t2)
+        | _ -> rhs) in
+      let _ = (match e1 with
+          SId id -> let lhs = id_gen builder id in
+            let lltype = ltype_of_typ t2 in
+            let alloca = L.build_alloca lltype "new_typ" builder in
+            let _ = ignore(L.build_store rhs alloca builder) in 
+            Hash.add local_values id alloca
+        | SAccessArray(name, idx) -> let lhs = access_array_gen builder name idx
+            true in ignore(L.build_store rhs lhs builder)
+        | _ -> raise(Failure("Unable to assign " ^ string_of_sexpr se1 ^ " to "
+                             ^ string_of_sexpr se2))) in
       rhs
 
     and create_array_gen builder lt size =
@@ -211,7 +187,7 @@ let translate (globals, functions) =
       List.iteri array_assign el;
 
     and access_array_gen builder name index is_assign =
-      let arr = id_gen builder name true in
+      let arr = id_gen builder name in
       let index = expr builder index in
       let arr_val = L.build_gep arr [| index |] "arr_access" builder in
       if is_assign then arr_val
@@ -314,14 +290,14 @@ let translate (globals, functions) =
       | SFor (e1, e2, e3, body) -> stmt builder
 	    (map, ( SBlock [(map, SExpr e1) ; (map, SWhile (e2, (map, SBlock [body ;
             (map, SExpr e3)]))) ]))
-      | SVarDecs(svar_list) ->
-        let svar_dec_gen svar =
+      | SVarDecs(svar_list) -> (*TODO: multiple declarations in a line *)
+          let svar = List.hd svar_list in
           let ((t, s), e) = svar in
-
-            Hash.add local_params s (expr builder e) in
-        let _ = List.iter svar_dec_gen svar_list in
-        builder
-
+          let svar' = expr builder e in
+          let lltype = ltype_of_typ t in
+          let alloca = L.build_alloca lltype s builder in
+          let _ = Hash.add local_values s alloca in
+          let _ = ignore(L.build_store svar' alloca builder) in builder
       | SIf (predicate, then_stmt, elseif_stmts, else_stmt) ->
          let bool_val = expr builder predicate in
 	 let merge_bb = L.append_block context "merge" the_function in
