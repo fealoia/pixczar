@@ -134,14 +134,14 @@ let translate (globals, functions) =
 *)
       | SAssign(e1, e2) -> assign_gen builder e1 e2
       | SCall ("printf", [e]) ->
-        L.build_call printf_func [| string_format_str ; (expr builder e) |] "printf" builder
+        L.build_call printf_func [| int_format_str ; (expr builder e) |] "printf" builder
       | SBinop (e1, op, e2) -> binop_gen builder e1 op e2
       | SUnop(op, e) -> unop_gen builder op e
       | SNullLit -> L.const_null i32_t
 (*
       | SNewArray(t, size) -> new_array_gen builder t, size
 *)
-      | SCreateArray(el) -> create_array_gen builder el
+      | SCreateArray(el) -> create_array_gen builder (List.rev el)
       | SAccessArray(name, idx) -> access_array_gen builder name idx false
 (* not needed
       | SPostUnop of sexpr * post_uop
@@ -209,33 +209,21 @@ let translate (globals, functions) =
       let e = List.hd el in
       let (m, t, sx) = e in
       let lt = ltype_of_typ t in
-
-      (* This will not work for arrays of objects *)
-      let size = (expr builder e) in
-      let size_t = L.build_intcast (L.size_of lt) i32_t "tmp" builder in
-      let size = L.build_mul size_t size "tmp" builder in
-      let size_real = L.build_add size (L.const_int i32_t 1) "arr_size" builder in
-
-      let arr = L.build_array_malloc lt size_real "tmp" builder in
-      let arr = L.build_pointercast arr (L.pointer_type lt) "tmp" builder in
-
-      let arr_len_ptr = L.build_pointercast arr (L.pointer_type i32_t) "tmp" builder in
-
-      (* Store length at this position *)
-      ignore(L.build_store size_real arr_len_ptr builder);
-      (* initialise_array arr_len_ptr size_real (const_int i32_t 0) 0 builder; *)
-      arr
-
+      let size =  L.const_int i32_t (List.length el) in
+      let arr = L.build_array_malloc lt size "array_gen" builder in
+      let arr = L.build_pointercast arr (L.pointer_type lt) "array_cast" builder in
+      let array_assign idx arr_e = ignore(L.build_store (expr builder arr_e) 
+        (L.build_gep arr [| (L.const_int i32_t idx) |] "array_assign"
+        builder) builder) in 
+      List.iteri array_assign el;
+      arr  
     and access_array_gen builder name index is_assign =
-      let arr_obj = id_gen builder name true in
-      let sindex = expr builder index in
-      let sindex = L.build_add sindex (L.const_int i32_t 1) "list_index" builder in
-      let _val = L.build_gep arr_obj [| sindex |] "list_access" builder in
-      if is_assign then
-        _val
-      else
-        L.build_load _val "list_access_val" builder
-
+      let arr = id_gen builder name true in
+      let index = expr builder index in
+      let arr_val = L.build_gep arr [| index |] "arr_access" builder in
+      if is_assign then arr_val
+      else L.build_load arr_val "arr_access_val" builder
+    
     and binop_gen  builder e1 op e2 =
       let (_, t, _) = e1
         and e1' = expr builder e1
