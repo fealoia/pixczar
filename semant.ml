@@ -43,7 +43,7 @@ let check (globals, functions) =
       typ = Void; fname = name;
       formals = formal_vars; locals = []; body = [] } map
     in List.fold_left add_bind StringMap.empty [ ("render", Void,
-    [(Array(Frame), "frames"); (Int, "fps") ]); ("printf", Void, [String, "s"]);]
+    [(Array(Frame), "frames"); (Int, "fps") ]); ("printf", Void, [Int, "s"]);]
   in
 
   (* Add function name to symbol table *)

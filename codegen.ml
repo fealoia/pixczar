@@ -134,7 +134,7 @@ let translate (globals, functions) =
 *)
       | SAssign(e1, e2) -> assign_gen builder e1 e2
       | SCall ("printf", [e]) ->
-        L.build_call printf_func [| string_format_str ; (expr builder e) |] "printf" builder
+        L.build_call printf_func [| int_format_str ; (expr builder e) |] "printf" builder
       | SBinop (e1, op, e2) -> binop_gen builder e1 op e2
       | SUnop(op, e) -> unop_gen builder op e
       | SNullLit -> L.const_null i32_t
@@ -186,7 +186,7 @@ let translate (globals, functions) =
       let (_, t2, e2) = se2 in
 
       let (lhs, is_obj_access) = match e1 with
-          SId id -> (id_gen builder id false, false)
+          SId id -> (id_gen builder id true, false)
         | SAccessArray(name, idx) -> (access_array_gen builder name idx true, true)
         | _ -> raise(Failure("Unable to assign " ^ string_of_sexpr se1 ^ " to "
                              ^ string_of_sexpr se2))
@@ -195,21 +195,25 @@ let translate (globals, functions) =
       let rhs = match e2 with
           SId(id) -> (match t2 with
               A.Pix | A.Placement | A.Frame | A.String
-              (* | A.Array | A.Struct *) -> id_gen builder id false
+              (* | A.Array | A.Struct *) -> id_gen builder id true
             | _ -> id_gen builder id true)
         | SAccessArray(name, idx) -> access_array_gen builder name idx true
         | _ -> expr builder se2
       in
 
       let rhs = match t2 with
-          A.Pix | A.Placement | A.Frame | A.String
+          A.Pix | A.Placement | A.Frame
           (* | A.Array | A.Struct *) -> if is_obj_access then rhs
                                 else L.build_load rhs "tmp" builder
         | A.Null -> L.const_null (ltype_of_typ t2)
-        | _ -> rhs
-      in
+        | _ -> rhs    
+     in let lltype = ltype_of_typ t2 in
+          let alloca = L.build_alloca lltype "temp" builder in
+          let _ = ignore(L.build_store rhs alloca builder) 
+          in (match e1 with
+            SId id -> Hash.add local_values id alloca)(*in 
 
-      ignore(L.build_store rhs lhs builder);
+          ignore(L.build_store alloca lhs builder);*);
       rhs
 
     and create_array_gen builder el =
@@ -341,17 +345,13 @@ let translate (globals, functions) =
 	    (map, ( SBlock [(map, SExpr e1) ; (map, SWhile (e2, (map, SBlock [body ;
             (map, SExpr e3)]))) ]))
       | SVarDecs(svar_list) ->
-        let svar_dec_gen svar =
+        let svar = List.hd svar_list in
           let ((t, s), e) = svar in
+          let svar' = expr builder e in
           let lltype = ltype_of_typ t in
           let alloca = L.build_alloca lltype s builder in
-            Hash.add local_values s alloca;
-          let (_, _, sx) = e in
-            match sx with
-                SAssign(lhs, rhs) -> assign_gen builder lhs rhs
-              | _ -> alloca in
-        svar_dec_gen (List.nth svar_list 0); builder (* for now just do 1st one *)
-
+          let _ = Hash.add local_values s alloca in 
+          let _ = ignore(L.build_store svar' alloca builder) in builder;
       | SIf (predicate, then_stmt, elseif_stmts, else_stmt) ->
          let bool_val = expr builder predicate in
 	 let merge_bb = L.append_block context "merge" the_function in
