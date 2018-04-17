@@ -27,8 +27,8 @@ let translate (globals, functions) =
       i32_t; i32_t; |] in
   let placement_t = L.struct_type context [|
       pix_t; i32_t; i32_t; i32_t; i32_t; |] in
-  let frame_t     = L.struct_type context [| (*ToDo: add placements arr *)
-      i32_t; i32_t; |] in
+  let frame_t     = L.struct_type context [|
+      i32_t; i32_t; L.pointer_type (placement_t) |] in
 
   let the_module = L.create_module context "PixCzar" in
 
@@ -40,9 +40,9 @@ let translate (globals, functions) =
     | A.Bool      -> i1_t
     | A.Null      -> i32_t
     | A.Array(t)  -> L.pointer_type (ltype_of_typ t)
-    (*| A.Pix
-    | A.Placement ->
-    | A.Frame ->*)
+    | A.Pix       -> pix_t
+    | A.Placement -> placement_t
+    | A.Frame     -> frame_t
     | t -> raise (Failure ("Type " ^ A.string_of_typ t ^ " not implemented yet"))
   in
 
@@ -62,10 +62,6 @@ let translate (globals, functions) =
      L.declare_function "printf" printf_t the_module in
 
   let to_imp str = raise (Failure ("Not yet implemented1: " ^ str)) in
-  let to_imp2 str = raise (Failure ("Not yet implemented2: " ^ str)) in
-  let to_imp3 str = raise (Failure ("Not yet implemented3: " ^ str)) in
-  let to_imp4 str = raise (Failure ("Not yet implemented4: " ^ str)) in
-  let to_imp5 str = raise (Failure ("Not yet implemented5: " ^ str)) in
 
   (* Define each function (arguments and return type) so we can
    * define it's body and call it later *)
@@ -121,9 +117,6 @@ let translate (globals, functions) =
       | SFliteral l -> L.const_float float_t l
       | SBoolLit b -> L.const_int i1_t (if b then 1 else 0)
       | SNoexpr -> L.const_int i32_t 0
-(*
-      | SId s -> L.build_load (lookup s) s builder
-*)
       | SId s -> id_gen builder s true
 (*
       | SAssign (e1, e2) -> let e' = expr builder e1 in
@@ -138,22 +131,23 @@ let translate (globals, functions) =
       | SBinop (e1, op, e2) -> binop_gen builder e1 op e2
       | SUnop(op, e) -> unop_gen builder op e
       | SNullLit -> L.const_null i32_t
-(*
-      | SNewArray(t, size) -> new_array_gen builder t, size
-*)
-      | SCreateArray(el) -> create_array_gen builder (List.rev el)
+      | SNew(t, el) -> (match t with
+          Pix         -> L.build_malloc (ltype_of_typ t) "pix_create" builder
+          | _ -> to_imp "Additional types")
+
+      | SNewArray(t, size) -> let lt = ltype_of_typ t 
+        in create_array_gen builder lt size
+      | SCreateArray(el) -> let e = List.hd el in let (_, t, _) = e in
+         let lt = ltype_of_typ t in
+         let arr = create_array_gen builder lt (List.length el)
+         in let _ = fill_array builder arr (List.rev el) in arr
       | SAccessArray(name, idx) -> access_array_gen builder name idx false
 (* not needed
       | SPostUnop of sexpr * post_uop
-      | SAssign of sexpr * sexpr
       | SCall of string * sexpr list
       | SNew of typ * sexpr list
-      | SNewArray of typ * int
-      | SCreateArray of sexpr list
       | SSubArray of string * int * int
       | SAccessStruct of string * string
-      | SPostIncrement of sexpr
-      | SPostDecrement of sexpr
 *)
       | _ -> to_imp ""
 
@@ -205,18 +199,17 @@ let translate (globals, functions) =
       ignore(L.build_store rhs lhs builder);
       rhs
 
-    and create_array_gen builder el =
-      let e = List.hd el in
-      let (m, t, sx) = e in
-      let lt = ltype_of_typ t in
-      let size =  L.const_int i32_t (List.length el) in
+    and create_array_gen builder lt size =
+      let size =  L.const_int i32_t size in
       let arr = L.build_array_malloc lt size "array_gen" builder in
-      let arr = L.build_pointercast arr (L.pointer_type lt) "array_cast" builder in
+      L.build_pointercast arr (L.pointer_type lt) "array_cast" builder
+
+    and fill_array builder arr el = 
       let array_assign idx arr_e = ignore(L.build_store (expr builder arr_e) 
         (L.build_gep arr [| (L.const_int i32_t idx) |] "array_assign"
         builder) builder) in 
       List.iteri array_assign el;
-      arr  
+
     and access_array_gen builder name index is_assign =
       let arr = id_gen builder name true in
       let index = expr builder index in
@@ -293,7 +286,7 @@ let translate (globals, functions) =
       | SBlock sl -> List.fold_left stmt builder sl
       | SReturn e -> let _ = match fdecl.styp with
                               A.Int -> L.build_ret (expr builder e) builder
-                            | _ -> to_imp4 (A.string_of_typ fdecl.styp)
+                            | _ -> to_imp (A.string_of_typ fdecl.styp)
                      in builder
       | SWhile (predicate, body) ->
           (* First create basic block for condition instructions -- this will
