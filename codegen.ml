@@ -110,7 +110,7 @@ let translate (globals, functions) =
                    with Not_found -> StringMap.find n global_vars
     in
 
-    let rec expr builder ((_, _, e) : sexpr) = match e with
+    let rec expr builder ((m, t, e) : sexpr) = match e with
         SLiteral i -> L.const_int i32_t i
       | SStringLit st -> L.build_global_stringptr st "tmp" builder
       | SFliteral l -> L.const_float float_t l
@@ -119,7 +119,7 @@ let translate (globals, functions) =
       | SId s -> id_gen builder s
       | SAssign(e1, e2) -> assign_gen builder e1 e2
       | SCall ("printf", [e]) ->
-        L.build_call printf_func [| string_format_str ; (expr builder e) |] "printf" builder
+        L.build_call printf_func [| int_format_str ; (expr builder e) |] "printf" builder
       | SBinop (e1, op, e2) -> binop_gen builder e1 op e2
       | SUnop(op, e) -> unop_gen builder op e
       | SNullLit -> L.const_null i32_t
@@ -134,6 +134,16 @@ let translate (globals, functions) =
          let arr = create_array_gen builder lt (List.length el)
          in let _ = fill_array builder arr (List.rev el) in arr
       | SAccessArray(name, idx) -> access_array_gen builder name idx false
+      | SPostUnop(e, op) -> let (_, _, e'') = e in let e' = expr builder e in (match op with
+            PostIncrement -> (match e'' with
+              SId(_) | SAccessArray(_, _) ->
+                assign_gen builder e (m, t, SBinop(e, A.Add, (m, t, SLiteral(1))))
+              | _ -> L.build_add e' (L.const_int i32_t 1) "add" builder)
+          | PostDecrement -> (match e'' with
+              SId(_) | SAccessArray(_, _) ->
+                assign_gen builder e (m, t, SBinop(e, A.Sub, (m, t, SLiteral(1))))
+              | _ -> L.build_sub e' (L.const_int i32_t 1) "sub" builder)
+      )
 (* not needed
       | SPostUnop of sexpr * post_uop
       | SCall of string * sexpr list
