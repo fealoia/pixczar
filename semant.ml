@@ -84,8 +84,7 @@ let check (globals, functions) =
 
     (* Build local symbol table of variables for this function *)
     let symbols = List.fold_left (fun m (ty, name) -> StringMap.add name ty m)
-	                StringMap.empty ((List.map fst (List.map get_first globals'))
-                        @ formals')
+	                StringMap.empty ((List.map fst (List.map get_first globals')))
     in
 
     (* Return a variable from our local symbol table *)

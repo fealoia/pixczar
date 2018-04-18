@@ -22,8 +22,6 @@ and sx =
   | SSubArray of string * int * int
   | SAccessArray of string * sexpr
   | SAccessStruct of string * string
-  | SPostIncrement of sexpr
-  | SPostDecrement of sexpr
 
 type svar = bind * sexpr
 
@@ -79,8 +77,6 @@ let rec string_of_sexpr (_, t, e) =
   | SAccessArray(id, e2) -> id ^ "[" ^ string_of_sexpr e2 ^ "]"
   | SNewArray(t, i) -> "new " ^ string_of_typ t ^ "[" ^ string_of_int i ^ "]"
   | SAccessStruct(i1, i2) -> i1 ^ "." ^ i2
-  | SPostIncrement(e) -> "(" ^ string_of_sexpr e ^ ")++"
-  | SPostDecrement(e) -> "(" ^ string_of_sexpr e ^ ")--"
     ) ^ ")"
 
 let string_of_svdecl ((t1, id), (map, t2, value)) =

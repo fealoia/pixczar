@@ -6,7 +6,6 @@ module StringMap = Map.Make(String)
 module Hash = Hashtbl
 
 let global_classes:(string, L.lltype) Hash.t = Hash.create 50
-let local_params:(string, L.llvalue) Hash.t = Hash.create 50
 let local_values:(string, L.llvalue) Hash.t = Hash.create 50
 let class_self:(string, L.llvalue) Hash.t = Hash.create 50
 let class_fields:(string, int) Hash.t = Hash.create 50
@@ -27,8 +26,8 @@ let translate (globals, functions) =
       i32_t; i32_t; |] in
   let placement_t = L.struct_type context [|
       pix_t; i32_t; i32_t; i32_t; i32_t; |] in
-  let frame_t     = L.struct_type context [| (*ToDo: add placements arr *)
-      i32_t; i32_t; |] in
+  let frame_t     = L.struct_type context [|
+      i32_t; i32_t; L.pointer_type (placement_t) |] in
 
   let the_module = L.create_module context "PixCzar" in
 
@@ -40,9 +39,9 @@ let translate (globals, functions) =
     | A.Bool      -> i1_t
     | A.Null      -> i32_t
     | A.Array(t)  -> L.pointer_type (ltype_of_typ t)
-    (*| A.Pix
-    | A.Placement ->
-    | A.Frame ->*)
+    | A.Pix       -> pix_t
+    | A.Placement -> placement_t
+    | A.Frame     -> frame_t
     | t -> raise (Failure ("Type " ^ A.string_of_typ t ^ " not implemented yet"))
   in
 
@@ -62,10 +61,6 @@ let translate (globals, functions) =
      L.declare_function "printf" printf_t the_module in
 
   let to_imp str = raise (Failure ("Not yet implemented1: " ^ str)) in
-  let to_imp2 str = raise (Failure ("Not yet implemented2: " ^ str)) in
-  let to_imp3 str = raise (Failure ("Not yet implemented3: " ^ str)) in
-  let to_imp4 str = raise (Failure ("Not yet implemented4: " ^ str)) in
-  let to_imp5 str = raise (Failure ("Not yet implemented5: " ^ str)) in
 
   (* Define each function (arguments and return type) so we can
    * define it's body and call it later *)
@@ -110,142 +105,94 @@ let translate (globals, functions) =
       List.fold_left add_local formals fdecl.slocals
     in
 
-    let lookup n = try StringMap.find n local_vars
-                   with Not_found -> StringMap.find n global_vars
-    in
-
-    let rec expr builder ((_, _, e) : sexpr) = match e with
-        (* 42  ----->  i32 42 *)
+    let rec expr builder ((m, t, e) : sexpr) = match e with
         SLiteral i -> L.const_int i32_t i
       | SStringLit st -> L.build_global_stringptr st "tmp" builder
       | SFliteral l -> L.const_float float_t l
       | SBoolLit b -> L.const_int i1_t (if b then 1 else 0)
       | SNoexpr -> L.const_int i32_t 0
-(*
-      | SId s -> L.build_load (lookup s) s builder
-*)
       | SId s -> id_gen builder s true
-(*
-      | SAssign (e1, e2) -> let e' = expr builder e1 in
-          let check_var = match e1 with
-             (_, _, SId(s)) -> let _ = Hash.add params s (expr builder e2) in e'
-           | _ -> to_imp2 "SAssign type"
-          in check_var
-*)
       | SAssign(e1, e2) -> assign_gen builder e1 e2
       | SCall ("printf", [e]) ->
         L.build_call printf_func [| string_format_str ; (expr builder e) |] "printf" builder
       | SBinop (e1, op, e2) -> binop_gen builder e1 op e2
       | SUnop(op, e) -> unop_gen builder op e
       | SNullLit -> L.const_null i32_t
-(*
-      | SNewArray(t, size) -> new_array_gen builder t, size
-*)
-      | SCreateArray(el) -> create_array_gen builder el
+      | SNew(t, el) -> (match t with
+          Pix         -> L.build_malloc (ltype_of_typ t) "pix_create" builder
+          | _ -> to_imp "Additional types")
+
+      | SNewArray(t, size) -> let lt = ltype_of_typ t
+        in create_array_gen builder lt size
+      | SCreateArray(el) -> let e = List.hd el in let (_, t, _) = e in
+         let lt = ltype_of_typ t in
+         let arr = create_array_gen builder lt (List.length el)
+         in let _ = fill_array builder arr (List.rev el) in arr
       | SAccessArray(name, idx) -> access_array_gen builder name idx false
+      | SPostUnop(e, op) -> let (_, _, e'') = e in let e' = expr builder e in (match op with
+            PostIncrement -> (match e'' with
+              SId(_) | SAccessArray(_, _) ->
+                assign_gen builder e (m, t, SBinop(e, A.Add, (m, t, SLiteral(1))))
+              | _ -> L.build_add e' (L.const_int i32_t 1) "add" builder)
+          | PostDecrement -> (match e'' with
+              SId(_) | SAccessArray(_, _) ->
+                assign_gen builder e (m, t, SBinop(e, A.Sub, (m, t, SLiteral(1))))
+              | _ -> L.build_sub e' (L.const_int i32_t 1) "sub" builder)
+      )
 (* not needed
-      | SPostUnop of sexpr * post_uop
-      | SAssign of sexpr * sexpr
       | SCall of string * sexpr list
       | SNew of typ * sexpr list
-      | SNewArray of typ * int
-      | SCreateArray of sexpr list
       | SSubArray of string * int * int
       | SAccessStruct of string * string
-      | SPostIncrement of sexpr
-      | SPostDecrement of sexpr
 *)
       | _ -> to_imp ""
 
-    and id_gen builder id is_deref =
-(*
-      let () = Printf.printf "id_gen %s %B \n%!" id is_deref in
-*)
-      if is_deref then
-        if Hash.mem local_params id then
-          Hash.find local_params id
-        else
-          if Hash.mem local_values id then
-            let _val = Hash.find local_values id in
-            L.build_load _val id builder
-          else
-          raise(Failure("Unknown variable deref " ^ id))
-      else
-(*
-      let () = Printf.printf "notderef %s %B \n%!" id is_deref in
-*)
+    and id_gen builder id deref =
         if Hash.mem local_values id then
-          Hash.find local_values id
-        else if Hash.mem local_params id then
-          Hash.find local_params id
+            let _val = Hash.find local_values id in
+            if deref = true then
+              L.build_load _val id builder
+            else _val
         else
-          raise(Failure("Unknown variable nonderef " ^ id))
+          raise(Failure("Unknown variable" ^ id))
 
     and assign_gen builder se1 se2 =
       let (_, t1, e1) = se1 in
       let (_, t2, e2) = se2 in
 
-      let (lhs, is_obj_access) = match e1 with
-          SId id -> (id_gen builder id true, false)
-        | SAccessArray(name, idx) -> (access_array_gen builder name idx true, true)
-        | _ -> raise(Failure("Unable to assign " ^ string_of_sexpr se1 ^ " to "
-                             ^ string_of_sexpr se2))
-      in
-
-      let rhs = match e2 with
-          SId(id) -> (match t2 with
-              A.Pix | A.Placement | A.Frame | A.String
-              (* | A.Array | A.Struct *) -> id_gen builder id true
-            | _ -> id_gen builder id true)
+      let rhs = (match e2 with
+          SId(id) -> id_gen builder id true
         | SAccessArray(name, idx) -> access_array_gen builder name idx true
-        | _ -> expr builder se2
-      in
-
-      let rhs = match t2 with
-          A.Pix | A.Placement | A.Frame
-          (* | A.Array | A.Struct *) -> if is_obj_access then rhs
-                                else L.build_load rhs "tmp" builder
-        | A.Null -> L.const_null (ltype_of_typ t2)
-        | _ -> rhs
-     in let lltype = ltype_of_typ t2 in
-          let alloca = L.build_alloca lltype "temp" builder in
-          let _ = ignore(L.build_store rhs alloca builder)
-          in (match e1 with
-            SId id -> Hash.add local_values id alloca)(*in
-
-          ignore(L.build_store alloca lhs builder);*);
+        | _ -> expr builder se2) in
+      let rhs = (match t2 with
+          A.Null -> L.const_null (ltype_of_typ t2)
+        | _ -> rhs) in
+      let _ = (match e1 with
+          SId id -> let lhs = id_gen builder id false in
+            ignore(L.build_store rhs lhs builder)
+        | SAccessArray(name, idx) -> let lhs = access_array_gen builder name idx
+            true in ignore(L.build_store rhs lhs builder)
+        | _ -> raise(Failure("Unable to assign " ^ string_of_sexpr se1 ^ " to "
+                             ^ string_of_sexpr se2))) in
       rhs
 
-    and create_array_gen builder el =
-      let e = List.hd el in
-      let (m, t, sx) = e in
-      let lt = ltype_of_typ t in
+    and create_array_gen builder lt size =
+      let size =  L.const_int i32_t size in
+      let arr = L.build_array_malloc lt size "array_gen" builder in
+      L.build_pointercast arr (L.pointer_type lt) "array_cast" builder
 
-      (* This will not work for arrays of objects *)
-      let size = (expr builder e) in
-      let size_t = L.build_intcast (L.size_of lt) i32_t "tmp" builder in
-      let size = L.build_mul size_t size "tmp" builder in
-      let size_real = L.build_add size (L.const_int i32_t 1) "arr_size" builder in
-
-      let arr = L.build_array_malloc lt size_real "tmp" builder in
-      let arr = L.build_pointercast arr (L.pointer_type lt) "tmp" builder in
-
-      let arr_len_ptr = L.build_pointercast arr (L.pointer_type i32_t) "tmp" builder in
-
-      (* Store length at this position *)
-      ignore(L.build_store size_real arr_len_ptr builder);
-      (* initialise_array arr_len_ptr size_real (const_int i32_t 0) 0 builder; *)
-      arr
+    and fill_array builder arr el =
+      let array_assign idx arr_e = ignore(L.build_store (expr builder arr_e)
+        (L.build_gep arr [| (L.const_int i32_t idx) |] "array_assign"
+        builder) builder) in
+      List.iteri array_assign el;
 
     and access_array_gen builder name index is_assign =
-      let arr_obj = id_gen builder name true in
-      let sindex = expr builder index in
-      let sindex = L.build_add sindex (L.const_int i32_t 1) "list_index" builder in
-      let _val = L.build_gep arr_obj [| sindex |] "list_access" builder in
-      if is_assign then
-        _val
-      else
-        L.build_load _val "list_access_val" builder
+      let arr = id_gen builder name true in
+      let index = expr builder index in
+      let arr_val = L.build_gep arr [| index |] "arr_access" builder in
+      if is_assign then arr_val
+      else L.build_load arr_val "arr_access_val" builder
 
     and binop_gen  builder e1 op e2 =
       let (_, t, _) = e1
@@ -281,20 +228,24 @@ let translate (globals, functions) =
           | A.Geq     -> L.build_icmp L.Icmp.Sge
           ) e1' e2' "tmp" builder
 
-    and unop_gen builder unop e =
+      and unop_gen builder unop e =
       let unop_lval = expr builder e
-      and (_, t, _) = e in
-      let build_unop op unop_typ lval = match op, unop_typ with
-          A.Neg, A.Int -> L.build_neg lval "neg_int_tmp" builder
-        | A.Neg, A.Float -> L.build_fneg lval "neg_flt_tmp" builder
-        | A.Not, A.Bool -> L.build_not lval "not_bool_tmp" builder
-        | _ -> raise(Failure("Unsupported unop for " ^ A.string_of_uop op ^
+      and (m, t, e') = e in match unop, t with
+          A.Neg, A.Int -> L.build_neg unop_lval "neg_int_tmp" builder
+        | A.Neg, A.Float -> L.build_fneg unop_lval "neg_flt_tmp" builder
+        | A.Not, A.Bool -> L.build_not unop_lval "not_bool_tmp" builder
+        | A.PreIncrement, _ -> (match e' with
+             SId(_) | SAccessArray(_, _) -> let _ = assign_gen builder e (m, t, SBinop(e,
+                A.Add, (m, t, SLiteral(1)))) in unop_lval
+          | _ -> let _ = L.build_add unop_lval (L.const_int i32_t 1) "add" builder
+             in unop_lval)
+        | A.PreDecrement, _ -> (match e' with
+             SId(_) | SAccessArray(_, _) -> let _ = assign_gen builder e (m, t, SBinop(e,
+                A.Sub, (m, t, SLiteral(1)))) in unop_lval
+          | _ -> let _ = L.build_sub unop_lval (L.const_int i32_t 1) "add" builder
+             in unop_lval)
+        | _ -> raise(Failure("Unsupported unop for " ^ A.string_of_uop unop ^
           " and type " ^ A.string_of_typ t))
-      in
-
-      match t with
-          A.Int | A.Float | A.Bool -> build_unop unop t unop_lval
-        | _ -> raise(Failure("Invalid type for unop: " ^ A.string_of_typ t))
         in
 
     (* Each basic block in a program ends with a "terminator" instruction i.e.
@@ -316,7 +267,7 @@ let translate (globals, functions) =
       | SBlock sl -> List.fold_left stmt builder sl
       | SReturn e -> let _ = match fdecl.styp with
                               A.Int -> L.build_ret (expr builder e) builder
-                            | _ -> to_imp4 (A.string_of_typ fdecl.styp)
+                            | _ -> to_imp (A.string_of_typ fdecl.styp)
                      in builder
       | SWhile (predicate, body) ->
           (* First create basic block for condition instructions -- this will
@@ -344,14 +295,15 @@ let translate (globals, functions) =
       | SFor (e1, e2, e3, body) -> stmt builder
 	    (map, ( SBlock [(map, SExpr e1) ; (map, SWhile (e2, (map, SBlock [body ;
             (map, SExpr e3)]))) ]))
-      | SVarDecs(svar_list) ->
-        let svar = List.hd svar_list in
+
+      | SVarDecs(svar_list) -> (*TODO: multiple declarations in a line *)
+          let svar = List.hd svar_list in
           let ((t, s), e) = svar in
           let svar' = expr builder e in
           let lltype = ltype_of_typ t in
           let alloca = L.build_alloca lltype s builder in
           let _ = Hash.add local_values s alloca in
-          let _ = ignore(L.build_store svar' alloca builder) in builder;
+          let _ = ignore(L.build_store svar' alloca builder) in builder
       | SIf (predicate, then_stmt, elseif_stmts, else_stmt) ->
         if_gen predicate then_stmt elseif_stmts else_stmt
       | SElseIf (predicate, then_stmt) -> raise(Failure("HELLO"))
@@ -381,8 +333,12 @@ let translate (globals, functions) =
       let elseif_list = match elseif_ss with
           SBlock(l) -> l in
 
+(*
       let elseif_bbs = elseif_bb_gen elseif_list in
-      let if_elseif_bbs = if_bb :: elseif_bbs in
+*)
+(*
+      let if_elseif_bbs = then_bb :: elseif_bbs in
+*)
 
       (* for else statments *)
       let else_bb = L.append_block context "else" the_function in
