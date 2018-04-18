@@ -114,7 +114,7 @@ let translate (globals, functions) =
       | SId s -> id_gen builder s true
       | SAssign(e1, e2) -> assign_gen builder e1 e2
       | SCall ("printf", [e]) ->
-        L.build_call printf_func [| string_format_str ; (expr builder e) |] "printf" builder
+        L.build_call printf_func [| int_format_str ; (expr builder e) |] "printf" builder
       | SBinop (e1, op, e2) -> binop_gen builder e1 op e2
       | SUnop(op, e) -> unop_gen builder op e
       | SNullLit -> L.const_null i32_t
@@ -140,7 +140,6 @@ let translate (globals, functions) =
               | _ -> L.build_sub e' (L.const_int i32_t 1) "sub" builder)
       )
 (* not needed
-      | SPostUnop of sexpr * post_uop
       | SCall of string * sexpr list
       | SNew of typ * sexpr list
       | SSubArray of string * int * int
@@ -228,21 +227,25 @@ let translate (globals, functions) =
           | A.Greater -> L.build_icmp L.Icmp.Sgt
           | A.Geq     -> L.build_icmp L.Icmp.Sge
           ) e1' e2' "tmp" builder
-
-    and unop_gen builder unop e =
+    
+      and unop_gen builder unop e =
       let unop_lval = expr builder e
-      and (_, t, _) = e in
-      let build_unop op unop_typ lval = match op, unop_typ with
-          A.Neg, A.Int -> L.build_neg lval "neg_int_tmp" builder
-        | A.Neg, A.Float -> L.build_fneg lval "neg_flt_tmp" builder
-        | A.Not, A.Bool -> L.build_not lval "not_bool_tmp" builder
-        | _ -> raise(Failure("Unsupported unop for " ^ A.string_of_uop op ^
+      and (m, t, e') = e in match unop, t with
+          A.Neg, A.Int -> L.build_neg unop_lval "neg_int_tmp" builder
+        | A.Neg, A.Float -> L.build_fneg unop_lval "neg_flt_tmp" builder
+        | A.Not, A.Bool -> L.build_not unop_lval "not_bool_tmp" builder
+        | A.PreIncrement, _ -> (match e' with 
+             SId(_) | SAccessArray(_, _) -> let _ = assign_gen builder e (m, t, SBinop(e,
+                A.Add, (m, t, SLiteral(1)))) in unop_lval
+          | _ -> let _ = L.build_add unop_lval (L.const_int i32_t 1) "add" builder
+             in unop_lval)
+        | A.PreDecrement, _ -> (match e' with 
+             SId(_) | SAccessArray(_, _) -> let _ = assign_gen builder e (m, t, SBinop(e,
+                A.Sub, (m, t, SLiteral(1)))) in unop_lval
+          | _ -> let _ = L.build_sub unop_lval (L.const_int i32_t 1) "add" builder
+             in unop_lval)
+        | _ -> raise(Failure("Unsupported unop for " ^ A.string_of_uop unop ^
           " and type " ^ A.string_of_typ t))
-      in
-
-      match t with
-          A.Int | A.Float | A.Bool -> build_unop unop t unop_lval
-        | _ -> raise(Failure("Invalid type for unop: " ^ A.string_of_typ t))
         in
 
     (* Each basic block in a program ends with a "terminator" instruction i.e.
