@@ -1,0 +1,7 @@
+Void main() {
+  Int x = 0;
+  printi(++x);
+  printi(x);
+  printi(--x);
+  printi(x);
+}

@@ -1,0 +1,5 @@
+Void main() {
+  Int i = 0;
+  printi(i++);
+  printi(i--);
+}

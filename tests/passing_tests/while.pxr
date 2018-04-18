@@ -1,0 +1,7 @@
+Void main() {
+  Int x = 0;
+  while(x < 5) {
+    printf("Loop");
+    x = x + 1;
+  }
+}

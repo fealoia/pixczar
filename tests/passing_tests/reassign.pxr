@@ -1,0 +1,6 @@
+Void main() {
+  String x = "hello";
+  printf(x);
+  x = "world";
+  printf(x);
+}

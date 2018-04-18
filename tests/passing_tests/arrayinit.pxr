@@ -1,0 +1,6 @@
+Void main() {
+  Int[] arr = [1, 2, 3];
+  printi(arr[0]);
+  printi(arr[1]);
+  printi(arr[2]);
+}

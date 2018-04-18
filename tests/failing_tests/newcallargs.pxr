@@ -1,0 +1,4 @@
+Void main() {
+  Int x = 0;
+  Pix pix = new Pix(x);
+}

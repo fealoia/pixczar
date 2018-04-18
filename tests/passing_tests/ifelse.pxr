@@ -1,0 +1,8 @@
+Void main() {
+  String cond = "else";
+  if(cond == "if") {
+    printf("if cond");
+  } else {
+    printf("else cond");
+  }
+}

@@ -1,0 +1,4 @@
+Void main() {
+  Int[] arr = new Int[1];
+  arr[0] = "WrongType";
+}
