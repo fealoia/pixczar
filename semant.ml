@@ -43,7 +43,8 @@ let check (globals, functions) =
       typ = Void; fname = name;
       formals = formal_vars; locals = []; body = [] } map
     in List.fold_left add_bind StringMap.empty [ ("render", Void,
-    [(Array(Frame), "frames"); (Int, "fps") ]); ("printf", Void, [Int, "s"]);]
+    [(Array(Frame), "frames"); (Int, "fps") ]); ("printf", Void, [String, "s"]);
+    ("printi", Void, [Int, "i"]);]
   in
 
   (* Add function name to symbol table *)
@@ -316,6 +317,7 @@ let check (globals, functions) =
 
       | Continue -> (map, SContinue)
       | Break -> (map, SBreak)
+      | _ -> raise (Failure("To implement statement"))
 
     in let map_to_svar id typ resultlist = ((typ, id), (StringMap.empty, typ, (*ToDo: sloppy *)
     SNoexpr)) :: resultlist

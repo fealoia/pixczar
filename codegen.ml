@@ -113,8 +113,12 @@ let translate (globals, functions) =
       | SNoexpr -> L.const_int i32_t 0
       | SId s -> id_gen builder s true
       | SAssign(e1, e2) -> assign_gen builder e1 e2
-      | SCall ("printf", [e]) ->
-        L.build_call printf_func [| int_format_str ; (expr builder e) |] "printf" builder
+      | SCall (id, [e]) -> (match id with
+           "printf" ->  
+             L.build_call printf_func [| string_format_str ; (expr builder e) |] "printf" builder
+         | _ -> 
+             L.build_call printf_func [| int_format_str ; (expr builder e) |] "printf" builder
+        )
       | SBinop (e1, op, e2) -> binop_gen builder e1 op e2
       | SUnop(op, e) -> unop_gen builder op e
       | SNullLit -> L.const_null i32_t
