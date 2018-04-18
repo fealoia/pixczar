@@ -354,9 +354,7 @@ let translate (globals, functions) =
           let _ = ignore(L.build_store svar' alloca builder) in builder;
       | SIf (predicate, then_stmt, elseif_stmts, else_stmt) ->
         if_gen predicate then_stmt elseif_stmts else_stmt
-(*
-      | SElseIf (predicate, then_stmt) ->
-*)
+      | SElseIf (predicate, then_stmt) -> raise(Failure("HELLO"))
 
       | s -> to_imp (string_of_sstmt (map, ss))
 
@@ -369,15 +367,24 @@ let translate (globals, functions) =
       let then_builder = stmt (L.builder_at_end context then_bb) then_stmt in
       let () = add_terminal then_builder branch_instr in
 
-      let rec elseif_bb_gen elseiflist = match elseiflist with
+      let rec elseif_bb_gen elseif_list = match elseif_list with
           [] -> []
-        | elseif_stmt :: tl -> let elseif_sexpr, elseif_sstmts = elseif_stmt in
+        | elseif_sstmt :: tl ->
+            let (_, ss) = elseif_sstmt in
+            let elseif_cond = match ss with
+                SElseIf(sexpr, sstmt) -> sstmt in (* get the condition of the else if *)
             let elseif_bb = L.append_block context "elseif" the_function in
-            let elseif_builder = stmt (L.builder_at_end context elseif_bb) elseif_stmt in
+            let elseif_builder = stmt (L.builder_at_end context elseif_bb) elseif_cond in
             add_terminal elseif_builder :: elseif_bb_gen tl
       in
+      let elseif_ss = snd elseif_stmts in
+      let elseif_list = match elseif_ss with
+          SBlock(l) -> l in
 
+      let elseif_bbs = elseif_bb_gen elseif_list in
+      let if_elseif_bbs = if_bb :: elseif_bbs in
 
+      (* for else statments *)
       let else_bb = L.append_block context "else" the_function in
       let else_builder = stmt (L.builder_at_end context else_bb) else_stmt in
       let () = add_terminal else_builder branch_instr in
