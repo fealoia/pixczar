@@ -311,7 +311,7 @@ let translate (globals, functions) =
       | s -> to_imp (string_of_sstmt (map, ss))
 
     and if_gen predicate then_stmt elseif_stmts else_stmt =
-      let bool_val = expr builder predicate in
+      let if_bool_val = expr builder predicate in
       let merge_bb = L.append_block context "merge" the_function in
       let branch_instr = L.build_br merge_bb in
 
@@ -323,29 +323,43 @@ let translate (globals, functions) =
           [] -> []
         | elseif_sstmt :: tl ->
             let (_, ss) = elseif_sstmt in
-            let elseif_cond = match ss with
-                SElseIf(sexpr, sstmt) -> sstmt in (* get the condition of the else if *)
+            let elseif_cond, elseif_block = match ss with
+                SElseIf(sexpr, sstmt) -> sexpr, sstmt in
             let elseif_bb = L.append_block context "elseif" the_function in
-            let elseif_builder = stmt (L.builder_at_end context elseif_bb) elseif_cond in
-            add_terminal elseif_builder :: elseif_bb_gen tl
+            let elseif_builder = stmt (L.builder_at_end context elseif_bb) elseif_block in
+            let () = add_terminal elseif_builder branch_instr in
+            let bool_val_curr = expr builder elseif_cond in
+            (bool_val_curr, elseif_bb) :: elseif_bb_gen tl
       in
+
       let elseif_ss = snd elseif_stmts in
       let elseif_list = match elseif_ss with
           SBlock(l) -> l in
-
-(*
-      let elseif_bbs = elseif_bb_gen elseif_list in
-*)
-(*
-      let if_elseif_bbs = then_bb :: elseif_bbs in
-*)
 
       (* for else statments *)
       let else_bb = L.append_block context "else" the_function in
       let else_builder = stmt (L.builder_at_end context else_bb) else_stmt in
       let () = add_terminal else_builder branch_instr in
 
-      let _ = L.build_cond_br bool_val then_bb else_bb builder in
+      let bools_bbs_list = elseif_bb_gen elseif_list in
+      let bools_bbs_list = (if_bool_val, then_bb) :: bools_bbs_list @ [] in
+
+      let rec build_cond_brs bools_bbs_list else_bb =
+        let bool_val, bb1, bb2, tl = match bools_bbs_list with
+            [] -> raise(Failure("empty statements detected"))
+          | hd :: tl -> let bool_val, bb1 = hd in
+            bool_val, bb1, else_bb, []
+(*
+          | hd :: tl -> let bool_val, bb1 = hd in
+            let next = List.hd tl in
+            let (_, bb2) = next in
+            bool_val, bb1, bb2, tl
+*)
+        in
+        L.build_cond_br bool_val bb1 bb2 builder;
+        if List.length tl > 0 then build_cond_brs tl else_bb else 0 in
+
+      let _ = build_cond_brs bools_bbs_list else_bb in
       L.builder_at_end context merge_bb
 
     in
