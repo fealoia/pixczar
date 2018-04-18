@@ -134,7 +134,7 @@ let translate (globals, functions) =
 *)
       | SAssign(e1, e2) -> assign_gen builder e1 e2
       | SCall ("printf", [e]) ->
-        L.build_call printf_func [| int_format_str ; (expr builder e) |] "printf" builder
+        L.build_call printf_func [| string_format_str ; (expr builder e) |] "printf" builder
       | SBinop (e1, op, e2) -> binop_gen builder e1 op e2
       | SUnop(op, e) -> unop_gen builder op e
       | SNullLit -> L.const_null i32_t
@@ -206,12 +206,12 @@ let translate (globals, functions) =
           (* | A.Array | A.Struct *) -> if is_obj_access then rhs
                                 else L.build_load rhs "tmp" builder
         | A.Null -> L.const_null (ltype_of_typ t2)
-        | _ -> rhs    
+        | _ -> rhs
      in let lltype = ltype_of_typ t2 in
           let alloca = L.build_alloca lltype "temp" builder in
-          let _ = ignore(L.build_store rhs alloca builder) 
+          let _ = ignore(L.build_store rhs alloca builder)
           in (match e1 with
-            SId id -> Hash.add local_values id alloca)(*in 
+            SId id -> Hash.add local_values id alloca)(*in
 
           ignore(L.build_store alloca lhs builder);*);
       rhs
@@ -306,7 +306,7 @@ let translate (globals, functions) =
     let add_terminal builder instr =
                            (* The current block where we're inserting instr *)
       match L.block_terminator (L.insertion_block builder) with
-	Some _ -> ()
+        Some _ -> ()
       | None -> ignore (instr builder) in
 (*
   This function generates code for statements
@@ -350,24 +350,41 @@ let translate (globals, functions) =
           let svar' = expr builder e in
           let lltype = ltype_of_typ t in
           let alloca = L.build_alloca lltype s builder in
-          let _ = Hash.add local_values s alloca in 
+          let _ = Hash.add local_values s alloca in
           let _ = ignore(L.build_store svar' alloca builder) in builder;
       | SIf (predicate, then_stmt, elseif_stmts, else_stmt) ->
-         let bool_val = expr builder predicate in
-	 let merge_bb = L.append_block context "merge" the_function in
-         let branch_instr = L.build_br merge_bb in
+        if_gen predicate then_stmt elseif_stmts else_stmt
+(*
+      | SElseIf (predicate, then_stmt) ->
+*)
 
-	 let then_bb = L.append_block context "then" the_function in
-         let then_builder = stmt (L.builder_at_end context then_bb) then_stmt in
-	 let () = add_terminal then_builder branch_instr in
-
-	 let else_bb = L.append_block context "else" the_function in
-         let else_builder = stmt (L.builder_at_end context else_bb) else_stmt in
-	 let () = add_terminal else_builder branch_instr in
-
-	 let _ = L.build_cond_br bool_val then_bb else_bb builder in
-	 L.builder_at_end context merge_bb
       | s -> to_imp (string_of_sstmt (map, ss))
+
+    and if_gen predicate then_stmt elseif_stmts else_stmt =
+      let bool_val = expr builder predicate in
+      let merge_bb = L.append_block context "merge" the_function in
+      let branch_instr = L.build_br merge_bb in
+
+      let then_bb = L.append_block context "then" the_function in
+      let then_builder = stmt (L.builder_at_end context then_bb) then_stmt in
+      let () = add_terminal then_builder branch_instr in
+
+      let rec elseif_bb_gen elseiflist = match elseiflist with
+          [] -> []
+        | elseif_stmt :: tl -> let elseif_sexpr, elseif_sstmts = elseif_stmt in
+            let elseif_bb = L.append_block context "elseif" the_function in
+            let elseif_builder = stmt (L.builder_at_end context elseif_bb) elseif_stmt in
+            add_terminal elseif_builder :: elseif_bb_gen tl
+      in
+
+
+      let else_bb = L.append_block context "else" the_function in
+      let else_builder = stmt (L.builder_at_end context else_bb) else_stmt in
+      let () = add_terminal else_builder branch_instr in
+
+      let _ = L.build_cond_br bool_val then_bb else_bb builder in
+      L.builder_at_end context merge_bb
+
     in
 
       (* Build the code for each statement in the function *)

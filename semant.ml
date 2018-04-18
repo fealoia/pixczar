@@ -43,7 +43,7 @@ let check (globals, functions) =
       typ = Void; fname = name;
       formals = formal_vars; locals = []; body = [] } map
     in List.fold_left add_bind StringMap.empty [ ("render", Void,
-    [(Array(Frame), "frames"); (Int, "fps") ]); ("printf", Void, [Int, "s"]);]
+    [(Array(Frame), "frames"); (Int, "fps") ]); ("printf", Void, [String, "s"]);]
   in
 
   (* Add function name to symbol table *)
@@ -247,7 +247,7 @@ let check (globals, functions) =
       | AccessStruct(s, field) -> if true then raise (Failure ("AccessStructure not yet implemented")) else (map, Notyp, SSubArray("", 0, 0))
     in
 
-    let check_bool_expr e map=
+    let check_bool_expr e map =
       let (map, t', e') = check_expr e map
       and err = "expected Boolean expression in " ^ string_of_expr e
       in if t' != Bool then raise (Failure err) else (map, t', e')
@@ -256,9 +256,19 @@ let check (globals, functions) =
     (* Return a semantically-checked statement i.e. containing sexprs *)
     let rec check_stmt e map = match e with
         Expr e -> (map, SExpr (check_expr e map))
-      | If(e, s1, s2, s3) -> (map, SIf(check_expr e map, check_stmt s1 map,
-                check_stmt s2 map, check_stmt s3 map))
-      | ElseIf(e, s) -> (map, SElseIf(check_expr e map, check_stmt s map))
+      | If(e, s1, s2, s3) ->
+        let rec check_elseifs elseifs = match elseifs with
+            [] -> []
+          | hd :: tl -> match hd with
+                ElseIf(e, s) ->
+                  (map, SElseIf(check_bool_expr e map, check_stmt s map)) :: check_elseifs tl
+              | _ -> raise(Failure("non-else if statement found in else if")) in
+        let s2 = match s2 with
+            Block(sstmt) -> sstmt
+          | _ -> raise(Failure("if must have Block of else ifs")) in
+        (map, SIf(check_bool_expr e map, check_stmt s1 map, (map, SBlock(check_elseifs s2)), check_stmt s3 map))
+      (*| ElseIf(e, s) -> raise(Failure("else if(s) must be paired with an if")) *)
+
       | CreateStruct(x,y) -> raise (Failure("CreateStruct not yet implemented"))
       | For(e1, e2, e3, st) -> let (x,y,z) = check_expr e1 map in
                                let (x', y',z') = check_expr e2 x in
