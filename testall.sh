@@ -9,6 +9,8 @@ red=`tput setaf 1`
 green=`tput setaf 2`
 reset=`tput sgr0`
 
+ocamlbuild -use-ocamlfind -pkgs llvm,llvm.analysis pixczar.native
+
 for file in $passing_tests
 do
   echo "${reset}running: $file"
