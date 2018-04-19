@@ -306,64 +306,44 @@ let translate (globals, functions) =
           let _ = ignore(L.build_store svar' alloca builder) in builder
       | SIf (predicate, then_stmt, elseif_stmts, else_stmt) ->
         if_gen predicate then_stmt elseif_stmts else_stmt
-      | SElseIf (predicate, then_stmt) -> raise(Failure("HELLO"))
-
+      | SElseIf (_, _) -> raise(Failure("Should never reach SElseIf"))
       | s -> to_imp (string_of_sstmt (map, ss))
 
     and if_gen predicate then_stmt elseif_stmts else_stmt =
       let if_bool_val = expr builder predicate in
+      let if_bb = L.append_block context "if" the_function in
+      let () = add_terminal builder (L.build_br if_bb) in
+      
       let merge_bb = L.append_block context "merge" the_function in
       let branch_instr = L.build_br merge_bb in
 
       let then_bb = L.append_block context "then" the_function in
       let then_builder = stmt (L.builder_at_end context then_bb) then_stmt in
       let () = add_terminal then_builder branch_instr in
-
-      let rec elseif_bb_gen elseif_list = match elseif_list with
-          [] -> []
-        | elseif_sstmt :: tl ->
-            let (_, ss) = elseif_sstmt in
-            let elseif_cond, elseif_block = match ss with
-                SElseIf(sexpr, sstmt) -> sexpr, sstmt in
-            let elseif_bb = L.append_block context "elseif" the_function in
-            let elseif_builder = stmt (L.builder_at_end context elseif_bb) elseif_block in
-            let () = add_terminal elseif_builder branch_instr in
-            let bool_val_curr = expr builder elseif_cond in
-            (bool_val_curr, elseif_bb) :: elseif_bb_gen tl
-      in
-
-      let elseif_ss = snd elseif_stmts in
-      let elseif_list = match elseif_ss with
-          SBlock(l) -> l in
-
-      (* for else statments *)
+      
       let else_bb = L.append_block context "else" the_function in
       let else_builder = stmt (L.builder_at_end context else_bb) else_stmt in
       let () = add_terminal else_builder branch_instr in
 
-      let bools_bbs_list = elseif_bb_gen elseif_list in
-      let bools_bbs_list = (if_bool_val, then_bb) :: bools_bbs_list @ [] in
+      let rec elseif_bb_gen elseif_list bool_val pred_bb body_bb = match elseif_list with
+           (_, SElseIf(pred, body)) :: tl -> 
+             let elseif_pred_val = expr builder pred in
+             let elseif_pred_bb = L.append_block context "elseif_pred" the_function in
+             
+             let elseif_body_bb = L.append_block context "elseif_body" the_function in
+             let elseif_builder = stmt (L.builder_at_end context elseif_body_bb) body in
+             let () = add_terminal elseif_builder branch_instr in
 
-      let rec build_cond_brs bools_bbs_list else_bb =
-        let bool_val, bb1, bb2, tl = match bools_bbs_list with
-            [] -> raise(Failure("empty statements detected"))
-          | hd :: tl -> let bool_val, bb1 = hd in
-            bool_val, bb1, else_bb, []
-(*
-          | hd :: tl -> let bool_val, bb1 = hd in
-            let next = List.hd tl in
-            let (_, bb2) = next in
-            bool_val, bb1, bb2, tl
-*)
-        in
-        L.build_cond_br bool_val bb1 bb2 builder;
-        if List.length tl > 0 then build_cond_brs tl else_bb else 0 in
+             let _ = L.build_cond_br bool_val body_bb elseif_pred_bb
+                (L.builder_at_end context pred_bb)
+             in elseif_bb_gen tl elseif_pred_val elseif_pred_bb elseif_body_bb
 
-      let _ = build_cond_brs bools_bbs_list else_bb in
-      L.builder_at_end context merge_bb
-
+         | _ -> L.build_cond_br bool_val body_bb else_bb 
+                (L.builder_at_end context pred_bb)
+       in let (_, SBlock(elseif_ss)) = elseif_stmts in
+       let _ = elseif_bb_gen elseif_ss if_bool_val if_bb then_bb in
+       L.builder_at_end context merge_bb
     in
-
       (* Build the code for each statement in the function *)
     let builder = stmt builder (StringMap.empty, SBlock fdecl.sbody) in
 
