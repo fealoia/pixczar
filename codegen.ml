@@ -275,23 +275,48 @@ let translate (globals, functions) =
           let _ = Hash.add local_values s alloca in
           let _ = ignore(L.build_store svar' alloca builder) in builder
       | SIf (predicate, then_stmt, elseif_stmts, else_stmt) ->
-         let bool_val = expr builder predicate in
-	 let merge_bb = L.append_block context "merge" the_function in
-         let branch_instr = L.build_br merge_bb in
-
-	 let then_bb = L.append_block context "then" the_function in
-         let then_builder = stmt (L.builder_at_end context then_bb) then_stmt in
-	 let () = add_terminal then_builder branch_instr in
-
-	 let else_bb = L.append_block context "else" the_function in
-         let else_builder = stmt (L.builder_at_end context else_bb) else_stmt in
-	 let () = add_terminal else_builder branch_instr in
-
-	 let _ = L.build_cond_br bool_val then_bb else_bb builder in
-	 L.builder_at_end context merge_bb
+        if_gen predicate then_stmt elseif_stmts else_stmt
+      | SElseIf (_, _) -> raise(Failure("Should never reach SElseIf"))
       | s -> to_imp (string_of_sstmt (map, ss))
-    in
 
+    and if_gen predicate then_stmt elseif_stmts else_stmt =
+      let if_bool_val = expr builder predicate in
+      let if_bb = L.append_block context "if" the_function in
+      let () = add_terminal builder (L.build_br if_bb) in
+      
+      let merge_bb = L.append_block context "merge" the_function in
+      let branch_instr = L.build_br merge_bb in
+
+      let then_bb = L.append_block context "then" the_function in
+      let then_builder = stmt (L.builder_at_end context then_bb) then_stmt in
+      let () = add_terminal then_builder branch_instr in
+      
+      let else_bb = L.append_block context "else" the_function in
+      let else_builder = stmt (L.builder_at_end context else_bb) else_stmt in
+      let () = add_terminal else_builder branch_instr in
+
+      let rec elseif_bb_gen elseif_list bool_val pred_bb body_bb = match elseif_list with
+           (_, SElseIf(pred, body)) :: tl -> 
+             let elseif_pred_val = expr (L.builder_at_end context pred_bb) pred in
+             let elseif_pred_bb = L.append_block context "elseif_pred" the_function in
+             
+             let elseif_body_bb = L.append_block context "elseif_body" the_function in
+             let elseif_builder = stmt (L.builder_at_end context elseif_body_bb) body in
+             let () = add_terminal elseif_builder branch_instr in
+
+             let _ = L.build_cond_br bool_val body_bb elseif_pred_bb
+                (L.builder_at_end context pred_bb)
+             in elseif_bb_gen tl elseif_pred_val elseif_pred_bb elseif_body_bb
+
+         | _ -> L.build_cond_br bool_val body_bb else_bb 
+                (L.builder_at_end context pred_bb)
+       in let elseif_ss = match elseif_stmts with 
+           (_, SBlock(elseif_ss)) -> elseif_ss
+         | _ -> raise(Failure("Elseif must contain a Block"))
+       
+      in let _ = elseif_bb_gen elseif_ss if_bool_val if_bb then_bb in
+       L.builder_at_end context merge_bb
+    in
       (* Build the code for each statement in the function *)
     let builder = stmt builder (StringMap.empty, SBlock fdecl.sbody) in
 

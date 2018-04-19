@@ -31,12 +31,13 @@ TESTS FOR DELIVERABLE 4/18:
 Positive Tests:
 1. Array Assign* - creation of array and assignment of an element
 2. Array Initialization* - initialize array with elements on creation
-3. For - for loop with all 3 header conditions and a body
-4. If/Else - run else body when the 'if' condition fails
-5. PostOps* - post expressions will change value of an int and return the result
-6. PreOps* - pre expressions will change the value of an int and return the previous value
-7. Reassign Variable - variable can be reassigned to a new value later in program
-8. While - as long as the condition is true, program will run the body of the 'while' loop
+3. Else If* - executes the body of an else if condition
+4. For - for loop with all 3 header conditions and a body
+5. If/Else - run else body when the 'if' condition fails
+6. PostOps* - post expressions will change value of an int and return the result
+7. PreOps* - pre expressions will change the value of an int and return the previous value
+8. Reassign Variable - variable can be reassigned to a new value later in program
+9. While - as long as the condition is true, program will run the body of the 'while' loop
 
 Negative Tests:
 1. Array Assignment Wrong Type* - can't fill an array with elements of incorrect type
