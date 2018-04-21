@@ -1,0 +1,11 @@
+Void main() {
+  Int check = 3;
+
+  if(check == 2) {
+    printf("If");
+  } else if(check == 3) {
+    printf("Else if");
+  } else {
+    printf("Else");
+  }
+}

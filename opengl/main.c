@@ -1,12 +1,12 @@
 #define GLEW_STATIC
 
-#include <iostream>
+#include <stdio.h>
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
 const GLint WIDTH = 800, HEIGHT = 600;
 
-int main() {
+int render() {
     glfwInit();
     
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -15,13 +15,13 @@ int main() {
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
     glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 
-    GLFWwindow *window = glfwCreateWindow(WIDTH, HEIGHT, "YEEEE", nullptr, nullptr);
+    GLFWwindow *window = glfwCreateWindow(WIDTH, HEIGHT, "PixCzar", NULL, NULL);
     
     int screenWidth, screenHeight;
     glfwGetFramebufferSize( window, &screenWidth, &screenHeight);
     
-    if( window == nullptr ) {
-        std::cout << "Failed to create GLFW window" << std::endl;
+    if( window == NULL ) {
+        printf("Failed to create GLFW window\n");
         glfwTerminate();
         return -1;
     }
@@ -30,7 +30,7 @@ int main() {
     glewExperimental = GL_TRUE;
     
     if( GLEW_OK != glewInit() ) {
-        std::cout << "Failed to initialize GLEW" << std::endl;
+        printf("Failed to initialize GLEW\n");
         return -1;
     }
     

@@ -9,19 +9,35 @@ red=`tput setaf 1`
 green=`tput setaf 2`
 reset=`tput sgr0`
 
-ocamlbuild -use-ocamlfind -pkgs llvm,llvm.analysis pixczar.native
+CC="clang"
+LIBS="-framework GLUT -framework OpenGL -lGLEW -lglfw"
+
+./make.sh
+
+create() {
+    ./pixczar.native "$1" > "$filename".ll
+    name=$(echo $1 | cut -f 1 -d ".")
+    llc "$name".ll
+    eval "$CC $LIBS -o $name.exe $name.s opengl/main.o"
+    rm "$name".s "$name".ll
+}
 
 for file in $passing_tests
 do
   echo "${reset}running: $file"
-  outfile=$(echo "$file" | cut -f 1 -d ".")".out"
-  diff "$outfile" <(./pixczar.native "$file" | lli)
+  filename=$(echo "$file" | cut -f 1 -d ".")
+  outfile="$filename".out
+
+  create "$file"
+  diff "$outfile" <(./"$filename".exe)
   if  [ $? -ne 0 ];
   then
     echo ${red}$failure ${reset}
   else
     echo ${green}$success "${reset}"
   fi
+
+  rm "$filename".exe
   echo "--------------------------------------"
 done
 

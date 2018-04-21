@@ -45,11 +45,16 @@ let translate (globals, functions) =
     | t -> raise (Failure ("Type " ^ A.string_of_typ t ^ " not implemented yet"))
   in
 
-  (* declare i32 @printf(i8*, ...) *)
-  let printf_t : L.lltype =
+  (* declare built-in functions *)
+  let builtin_printf_t : L.lltype =
       L.var_arg_function_type i32_t [| L.pointer_type i8_t |] in
-  let printf_func : L.llvalue =
-     L.declare_function "printf" printf_t the_module in
+  let builtin_printf_func : L.llvalue =
+     L.declare_function "printf" builtin_printf_t the_module in
+  let builtin_render_t : L.lltype =
+      L.var_arg_function_type i32_t [||] in
+  let builtin_render_func : L.llvalue =
+     L.declare_function "render" builtin_render_t the_module in
+      
 
   let to_imp str = raise (Failure ("Not yet implemented1: " ^ str)) in
 
@@ -80,11 +85,16 @@ let translate (globals, functions) =
       | SNoexpr -> L.const_int i32_t 0
       | SId s -> id_gen builder s true
       | SAssign(e1, e2) -> assign_gen builder e1 e2
-      | SCall (id, [e]) -> (match id with
+      | SCall (id, e) -> (match id with
            "printf" ->  
-             L.build_call printf_func [| string_format_str ; (expr builder e) |] "printf" builder
-         | _ -> 
-             L.build_call printf_func [| int_format_str ; (expr builder e) |] "printf" builder
+             L.build_call builtin_printf_func [| string_format_str ; (expr
+                builder (List.hd e)) |] "printf" builder
+         | "printi"  -> 
+             L.build_call builtin_printf_func [| int_format_str ; (expr builder
+                (List.hd e)) |] "printf" builder
+         | "render"  -> 
+             L.build_call builtin_render_func [||] "render" builder
+         | _ -> raise(Failure("Built-in function not implemented"))
         )
       | SBinop (e1, op, e2) -> binop_gen builder e1 op e2
       | SUnop(op, e) -> unop_gen builder op e
@@ -116,7 +126,7 @@ let translate (globals, functions) =
       | SSubArray of string * int * int
       | SAccessStruct of string * string
 *)
-      | _ -> to_imp ""
+      | _ -> to_imp "statement"
 
     and id_gen builder id deref =
         if Hash.mem local_values id then

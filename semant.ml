@@ -42,8 +42,8 @@ let check (globals, functions) =
     let add_bind map (name, typ, formal_vars) = StringMap.add name {
       typ = Void; fname = name;
       formals = formal_vars; locals = []; body = [] } map
-    in List.fold_left add_bind StringMap.empty [ ("render", Void,
-    [(Array(Frame), "frames"); (Int, "fps") ]); ("printf", Void, [String, "s"]);
+    in List.fold_left add_bind StringMap.empty [ (*("render", Void,
+    [(Array(Frame), "frames"); (Int, "fps") ]);*)("render", Void, []); ("printf", Void, [String, "s"]);
     ("printi", Void, [Int, "i"]);]
   in
 
