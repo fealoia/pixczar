@@ -25,8 +25,8 @@ let translate (globals, functions) =
       (* Currently only holding width, height, need rgb*)
       i32_t; i32_t; |] in
   let placement_t = L.struct_type context [|
-      pix_t; i32_t; i32_t; i32_t; i32_t; |] in
-  let frame_t     = L.struct_type context [|
+      L.pointer_type (pix_t); i32_t; i32_t; i32_t; i32_t; |] in
+  let frame_t = L.struct_type context [|
       i32_t; i32_t; L.pointer_type (placement_t) |] in
 
   let the_module = L.create_module context "PixCzar" in
@@ -74,8 +74,10 @@ let translate (globals, functions) =
     let (the_function, _) = StringMap.find fdecl.sfname function_decls in
     let builder = L.builder_at_end context (L.entry_block the_function) in
 
-    let int_format_str = L.build_global_stringptr "%d\n" "fmt" builder
-    and string_format_str = L.build_global_stringptr "%s\n" "fmt" builder in
+    let int_format_str = L.build_global_stringptr "%d\n" "fmt" builder in
+    let string_format_str = L.build_global_stringptr "%s\n" "fmt" builder in
+    let float_format_str = L.build_global_stringptr "%g\n" "fmt" builder in
+    let bool_format_str = L.build_global_stringptr "%d\n" "fmt" builder in
       
     let rec expr builder ((m, t, e) : sexpr) = match e with
         SLiteral i -> L.const_int i32_t i
@@ -87,10 +89,16 @@ let translate (globals, functions) =
       | SAssign(e1, e2) -> assign_gen builder e1 e2
       | SCall (id, e) -> (match id with
            "printf" ->  
-             L.build_call builtin_printf_func [| string_format_str ; (expr
+             L.build_call builtin_printf_func [| float_format_str ; (expr
                 builder (List.hd e)) |] "printf" builder
          | "printi"  -> 
              L.build_call builtin_printf_func [| int_format_str ; (expr builder
+                (List.hd e)) |] "printf" builder
+         | "prints"  -> 
+             L.build_call builtin_printf_func [| string_format_str ; (expr builder
+                (List.hd e)) |] "printf" builder
+         | "printb"  -> 
+             L.build_call builtin_printf_func [| bool_format_str ; (expr builder
                 (List.hd e)) |] "printf" builder
          | "render"  -> 
              L.build_call builtin_render_func [||] "render" builder

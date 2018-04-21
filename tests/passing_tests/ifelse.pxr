@@ -1,8 +1,8 @@
 Void main() {
   String cond = "else";
   if(cond == "if") {
-    printf("if cond");
+    print("if cond");
   } else {
-    printf("else cond");
+    print("else cond");
   }
 }

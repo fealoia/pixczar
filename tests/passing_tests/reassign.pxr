@@ -1,6 +1,6 @@
 Void main() {
   String x = "hello";
-  printf(x);
+  print(x);
   x = "world";
-  printf(x);
+  print(x);
 }

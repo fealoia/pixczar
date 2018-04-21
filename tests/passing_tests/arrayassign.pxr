@@ -1,5 +1,5 @@
 Void main() {
   Int[] arr = new Int[2];
   arr[0] = 100;
-  printi(arr[0]);
+  print(arr[0]);
 }

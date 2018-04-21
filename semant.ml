@@ -43,8 +43,7 @@ let check (globals, functions) =
       typ = Void; fname = name;
       formals = formal_vars; locals = []; body = [] } map
     in List.fold_left add_bind StringMap.empty [ (*("render", Void,
-    [(Array(Frame), "frames"); (Int, "fps") ]);*)("render", Void, []); ("printf", Void, [String, "s"]);
-    ("printi", Void, [Int, "i"]);]
+    [(Array(Frame), "frames"); (Int, "fps") ]);*)("render", Void, []);]
   in
 
   (* Add function name to symbol table *)
@@ -156,7 +155,16 @@ let check (globals, functions) =
                        string_of_typ t1 ^ " " ^ string_of_op op ^ " " ^
                        string_of_typ t2 ^ " in " ^ string_of_expr e))
           in (map, ty, SBinop((map, t1, e1'), op, (map, t2, e2')))
-      | Call(fname, args) as call ->
+      | Call(fname, args) as call -> (match fname with
+          "print" -> if List.length args != 1 then
+              raise (Failure ("expecting 1 argument in print"))
+           else let (m, et, e') = check_expr (List.hd args) map in (match et with
+           Int -> (map, Void, SCall("printi", [m, et, e']))
+             | Float -> (map, Void, SCall("printf", [m, et, e']))
+             | String -> (map, Void, SCall("prints", [m, et, e']))
+             | Bool -> (map, Void, SCall("printb", [m, et, e']))
+             | _ -> raise (Failure ("invalid argument for print")))
+         | _ ->
           let fd = find_func fname in
           let param_length = List.length fd.formals in
           if List.length args != param_length then
@@ -169,7 +177,7 @@ let check (globals, functions) =
             in (map, check_assign ft et err, e')
           in
           let args' = List.map2 check_call fd.formals args
-          in (map, fd.typ, SCall(fname, args'))
+          in (map, fd.typ, SCall(fname, args')))
       | New(t, args) as new_l ->
           let len_err len = "expecting " ^ string_of_int len ^
                             " arguments in " ^ string_of_expr new_l

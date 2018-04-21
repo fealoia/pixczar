@@ -1,7 +1,7 @@
 Void main() {
   Int x = 0;
-  printi(++x);
-  printi(x);
-  printi(--x);
-  printi(x);
+  print(++x);
+  print(x);
+  print(--x);
+  print(x);
 }

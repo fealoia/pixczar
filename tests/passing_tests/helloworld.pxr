@@ -1,4 +1,4 @@
 Void main() {
    String x = "Hello World";
-   printf(x);
+   print(x);
 }
