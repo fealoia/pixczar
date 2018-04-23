@@ -77,8 +77,11 @@ let check (globals, functions) =
     (* Raise an exception if the given rvalue type cannot be assigned to
        the given lvalue type *)
     let check_assign lvaluet rvaluet err = match lvaluet with
-        Pix | Placement | Frame | Array(_) | Struct(_) ->
+        Pix | Placement | Frame | Struct(_) ->
             if lvaluet = rvaluet || rvaluet = Null then lvaluet else raise (Failure err)
+       | Array(t, _) -> (match rvaluet with
+           Array(t, _) -> lvaluet
+         | _ -> raise(Failure (string_of_typ rvaluet)))
        | _ -> if lvaluet = rvaluet then lvaluet else raise (Failure err)
     in
 
@@ -204,13 +207,13 @@ let check (globals, functions) =
       | NewArray(s, size) as e ->
           (* ToDo: structs, matrices? *)
           let arr = match s with
-              Int       -> (map, Array(Int), SNewArray(Int, size))
-            | Float     -> (map, Array(Float), SNewArray(Float, size))
-            | Bool      -> (map, Array(Bool), SNewArray(Bool, size))
-            | String    -> (map, Array(String), SNewArray(String, size))
-            | Pix       -> (map, Array(Pix), SNewArray(Pix, size))
-            | Placement -> (map, Array(Placement), SNewArray(Placement, size))
-            | Frame     -> (map, Array(Frame), SNewArray(Frame, size))
+              Int       -> (map, Array(Int, size), SNewArray(Int, size))
+            | Float     -> (map, Array(Float, size), SNewArray(Float, size))
+            | Bool      -> (map, Array(Bool, size), SNewArray(Bool, size))
+            | String    -> (map, Array(String, size), SNewArray(String, size))
+            | Pix       -> (map, Array(Pix, size), SNewArray(Pix, size))
+            | Placement -> (map, Array(Placement, size), SNewArray(Placement, size))
+            | Frame     -> (map, Array(Frame, size), SNewArray(Frame, size))
             | _           -> raise (Failure ("illegal array type in " ^
                                 string_of_expr e))
         in if size > -1 then arr else
@@ -226,21 +229,21 @@ let check (globals, functions) =
                 | _ -> (map, et, e') :: sexprs
           in let result = List.fold_left check_types [] args in
           let arr = match result with
-              (x,y,z) :: tl -> (map, Array(y), SCreateArray(result))
-            | _ -> (map, Array(Notyp), SCreateArray(result))
+              (x,y,z) :: tl -> (map, Array(y, (List.length args)), SCreateArray(result))
+            | _ -> (map, Array(Notyp, 0), SCreateArray(result))
           in arr
       | AccessArray(id, e2) -> (* ToDo check idx -- do we need? there's no way to check length of array in semant.ml if that's what check idx should do*)
           let typ_err = id ^ " is not an array"
           in let (map2, et2, e2') = check_expr e2 map
           in let check_access = match (type_of_identifier id map) with
-              (Array(typ)) -> (map2, typ, SAccessArray(id, (map2, et2, e2')))
+              (Array(typ, _)) -> (map2, typ, SAccessArray(id, (map2, et2, e2')))
             | _            -> raise (Failure (typ_err))
           in check_access
       | SubArray(id, beg, end') ->
         let typ_err = id ^ " is not an array"
         in let check_access =
           match (type_of_identifier id map) with
-            (Array(typ)) -> 0
+            (Array(typ, _)) -> 0
           | _            -> raise (Failure (typ_err))
            in
            if beg <= end' then let _ = check_access in (map, Notyp,SSubArray(id, beg, end'))
@@ -295,7 +298,8 @@ let check (globals, functions) =
           in let checked_expr = check_expr e map
           in let check_it = match checked_expr with
               (_, Pix, _) -> if func <> "makeEllipse" then raise (Failure(err)) else
-                  let args' = (map, SObjCall(checked_expr, func, (check_func [(Int, "width"); (Int, "height"); (Array(Int),
+                  let args' = (map, SObjCall(checked_expr, func, (check_func
+                  [(Int, "width"); (Int, "height"); (Array(Int, 3),
                   "rgb")] args)))
                   in let arr_size_check = match args with
                         x :: y :: CreateArray(z) :: [] -> if List.length z != 3 then raise (Failure(err)) else args'
@@ -312,9 +316,10 @@ let check (globals, functions) =
                              in (if StringMap.mem s map then raise ( Failure ("Duplicate variable declaration " ^ s))
                                  else let new_symbols = StringMap.add s t map
                                       in let (map, t2, _) = check_expr e new_symbols
-                                         in if t <> t2 && t2 <> Void then raise ( Failure (
-                                           "LHS type of " ^ string_of_typ t ^ " not the same as " ^
-                                           "RHS type of " ^ string_of_typ t2 )) else (new_symbols, SVarDecs([(b, check_expr e new_symbols)])))
+                                         in let err = "LHS type of " ^ string_of_typ t ^ " not the same as " ^
+                                           "RHS type of " ^ string_of_typ t2 in
+                                         let _ = if t2 <> Void then check_assign t t2 err else t in   
+                                           (new_symbols, SVarDecs([(b, check_expr e new_symbols)])))
 
       | Continue -> (map, SContinue)
       | Break -> (map, SBreak)

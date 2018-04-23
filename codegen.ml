@@ -38,7 +38,7 @@ let translate (globals, functions) =
     | A.Float     -> float_t
     | A.Bool      -> i1_t
     | A.Null      -> i32_t
-    | A.Array(t)  -> L.pointer_type (ltype_of_typ t)
+    | A.Array(t, _)  -> L.pointer_type (ltype_of_typ t)
     | A.Pix       -> pix_t
     | A.Placement -> placement_t
     | A.Frame     -> frame_t

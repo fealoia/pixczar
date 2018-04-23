@@ -6,7 +6,7 @@ type uop = Neg | Not | PreIncrement | PreDecrement
 type post_uop = PostIncrement | PostDecrement
 
 type typ = Int | Bool | Float | String | Void | Pix | Placement | Frame | Notyp |
-           Array of typ | Struct of string | Null 
+           Array of typ * int | Struct of string | Null 
 
 type expr =
     Literal of int
@@ -94,7 +94,7 @@ let rec string_of_typ = function
   | Placement -> "Placement"
   | Frame -> "Frame"
   | Notyp -> ""
-  | Array(t) -> string_of_typ t ^ "[]"
+  | Array(t, _) -> string_of_typ t ^ "[]"
   | Struct(s) -> "Struct " ^ s
   | Null -> "Null"
 
