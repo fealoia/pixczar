@@ -166,19 +166,21 @@ let translate (globals, functions) =
       rhs
 
     and create_array_gen builder lt size =
-      let size =  L.const_int i32_t size in
-      let arr = L.build_array_malloc lt size "array_gen" builder in
+      let size_arr =  L.const_int i32_t (size+1) in (*Including space to store size*)
+      let arr = L.build_array_malloc lt size_arr "array_gen" builder in
+      let _ = ignore(L.build_store (L.const_int i32_t size) arr builder) in 
       L.build_pointercast arr (L.pointer_type lt) "array_cast" builder
 
     and fill_array builder arr el = 
       let array_assign idx arr_e = ignore(L.build_store (expr builder arr_e) 
-        (L.build_gep arr [| (L.const_int i32_t idx) |] "array_assign"
+        (L.build_gep arr [| (L.const_int i32_t (idx+1)) |] "array_assign"
         builder) builder) in 
       List.iteri array_assign el;
 
     and access_array_gen builder name index is_assign =
       let arr = id_gen builder name true in
       let index = expr builder index in
+      let index = L.build_add index (L.const_int i32_t 1) "add" builder in
       let arr_val = L.build_gep arr [| index |] "arr_access" builder in
       if is_assign then arr_val
       else L.build_load arr_val "arr_access_val" builder

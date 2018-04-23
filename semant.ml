@@ -81,7 +81,7 @@ let check (globals, functions) =
             if lvaluet = rvaluet || rvaluet = Null then lvaluet else raise (Failure err)
        | Array(t, _) -> (match rvaluet with
            Array(t, _) -> lvaluet
-         | _ -> raise(Failure (string_of_typ rvaluet)))
+         | _ -> raise(Failure (err)))
        | _ -> if lvaluet = rvaluet then lvaluet else raise (Failure err)
     in
 
