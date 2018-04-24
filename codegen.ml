@@ -9,6 +9,7 @@ let global_classes:(string, L.lltype) Hash.t = Hash.create 50
 let local_values:(string, L.llvalue) Hash.t = Hash.create 50
 let class_self:(string, L.llvalue) Hash.t = Hash.create 50
 let class_fields:(string, int) Hash.t = Hash.create 50
+let array_info:(string, int) Hash.t = Hash.create 50
 
 (* Code Generation from the SAST. Returns an LLVM module if successful,
    throws an exception if something is wrong. *)
@@ -168,7 +169,6 @@ let translate (globals, functions) =
     and create_array_gen builder lt size =
       let size_arr =  L.const_int i32_t (size+1) in (*Including space to store size*)
       let arr = L.build_array_malloc lt size_arr "array_gen" builder in
-      let _ = ignore(L.build_store (L.const_int i32_t size) arr builder) in 
       L.build_pointercast arr (L.pointer_type lt) "array_cast" builder
 
     and fill_array builder arr el = 
@@ -177,9 +177,19 @@ let translate (globals, functions) =
         builder) builder) in 
       List.iteri array_assign el;
 
+    and llvm_int_to_int llint =
+      let llint = L.int64_of_const llint in match llint with
+          Some(x) -> Int64.to_int(x)
+        | _ -> raise(Failure("int64 operation failed"))
+
     and access_array_gen builder name index is_assign =
       let arr = id_gen builder name true in
       let index = expr builder index in
+      let int_index = llvm_int_to_int index in
+      let int_size = Hash.find array_info name in
+      let _ = (if int_index < 0 || int_index >= int_size
+            then raise(Failure("Illegal index"))) in
+      
       let index = L.build_add index (L.const_int i32_t 1) "add" builder in
       let arr_val = L.build_gep arr [| index |] "arr_access" builder in
       if is_assign then arr_val
@@ -288,10 +298,15 @@ let translate (globals, functions) =
             (map, SExpr e3)]))) ]))
       | SVarDecs(svar_list) -> (*TODO: multiple declarations in a line *)
           let svar = List.hd svar_list in
-          let ((t, s), e) = svar in
-          let svar' = expr builder e in
+          let ((t, s), (m, et, e')) = svar in
+          let svar' = expr builder (m, et, e') in
           let lltype = ltype_of_typ t in
           let alloca = L.build_alloca lltype s builder in
+          let _ = (match t with
+              Array(_,size) -> Hash.add array_info s (match et with
+                  Array(_,et_size) -> et_size
+                | _ -> 0)
+            | _ -> ()) in
           let _ = Hash.add local_values s alloca in
           let _ = ignore(L.build_store svar' alloca builder) in builder
       | SIf (predicate, then_stmt, elseif_stmts, else_stmt) ->

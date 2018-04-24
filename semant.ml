@@ -232,7 +232,7 @@ let check (globals, functions) =
               (x,y,z) :: tl -> (map, Array(y, (List.length args)), SCreateArray(result))
             | _ -> (map, Array(Notyp, 0), SCreateArray(result))
           in arr
-      | AccessArray(id, e2) -> (* ToDo check idx -- do we need? there's no way to check length of array in semant.ml if that's what check idx should do*)
+      | AccessArray(id, e2) ->
           let typ_err = id ^ " is not an array"
           in let (map2, et2, e2') = check_expr e2 map
           in let check_access = match (type_of_identifier id map) with
