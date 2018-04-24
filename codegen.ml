@@ -330,10 +330,9 @@ let translate (globals, functions) =
               back to the predicate block (we always jump back at the end of a while
               loop's body, unless we returned or something) *)
         let body_bb = L.append_block context "while_body" the_function in
-              let while_builder = stmt (L.builder_at_end context body_bb) body
+         let while_builder = stmt (L.builder_at_end context body_bb) body
               ((pred_bb, merge_bb) :: loop_list) in
-        let () = add_terminal while_builder (L.build_br pred_bb) in
-
+         let () = add_terminal while_builder (L.build_br pred_bb) in
               (* Generate the predicate code in the predicate block *)
         let pred_builder = L.builder_at_end context pred_bb in
         let bool_val = expr pred_builder predicate in
@@ -347,11 +346,15 @@ let translate (globals, functions) =
       | SVarDecs(svar_list) -> (*TODO: multiple declarations in a line *)
             build_vars svar_list local_values builder
       | SIf (predicate, then_stmt, elseif_stmts, else_stmt) ->
-              if_gen predicate then_stmt elseif_stmts else_stmt loop_list
+              if_gen builder predicate then_stmt elseif_stmts else_stmt loop_list
       | SElseIf (_, _) -> raise(Failure("Should never reach SElseIf"))
+      | SBreak -> let () = add_terminal builder (L.build_br (snd (List.hd
+      loop_list))) in builder
+      | SContinue -> let () = add_terminal builder (L.build_br (fst (List.hd
+      loop_list))) in builder
       | s -> to_imp (string_of_sstmt (map, ss))
 
-    and if_gen predicate then_stmt elseif_stmts else_stmt loop_list =
+    and if_gen builder predicate then_stmt elseif_stmts else_stmt loop_list =
       let if_bool_val = expr builder predicate in
       let if_bb = L.append_block context "if" the_function in
       let () = add_terminal builder (L.build_br if_bb) in
