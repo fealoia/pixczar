@@ -1,0 +1,11 @@
+Int x = 1;
+Float y = 1.1;
+Boolean z = true;
+String w = "test";
+
+Void main() {
+  print(x);
+  print(y);
+  print(z);
+  print(w);
+}

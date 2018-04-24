@@ -1,0 +1,10 @@
+Int x = 3;
+
+Void test() {
+  print(x);
+}
+
+Void main() {
+  x = 1;
+  test();
+}
