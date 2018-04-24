@@ -331,16 +331,16 @@ let check (globals, functions) =
       in raise (Failure err)
     }
     
-  in let global_var_check map var_list = 
-    let (b, e) = get_first var_list
-    in let t = fst b and s = snd b
-    in let new_symbols = StringMap.add s t map
-    in let (map, t2, _) = check_expr e new_symbols
-    in let err = "LHS type of " ^ string_of_typ t ^ " not the same as " ^
-    "RHS type of " ^ string_of_typ t2 in
-    let _ = (if t2 <> Void then check_assign t t2 err else t) in map
+    in let global_var_check svar_list var_list = 
+        let (b, e) = get_first var_list
+        in let t = fst b
+        in let (map2,t2,e2) = check_expr e StringMap.empty
+        in let err = "LHS type of " ^ string_of_typ t ^ " not the same as " ^
+        "RHS type of " ^ string_of_typ t2 in
+        let _ = (if t2 <> Void then check_assign t t2 err else t)
+        in [(b, (map2,t2,e2))] :: svar_list
     
-    in let globals' = List.fold_left global_var_check StringMap.empty globals'
+    in let globals' = List.fold_left global_var_check [] globals'
 
   (* ToDo: global variables *)
-    in ([StringMap.fold map_to_svar globals' []], List.map check_function functions)
+    in (globals', List.map check_function functions)

@@ -5,10 +5,8 @@ open Sast
 module StringMap = Map.Make(String)
 module Hash = Hashtbl
 
-let global_classes:(string, L.lltype) Hash.t = Hash.create 50
 let local_values:(string, L.llvalue) Hash.t = Hash.create 50
-let class_self:(string, L.llvalue) Hash.t = Hash.create 50
-let class_fields:(string, int) Hash.t = Hash.create 50
+let global_values:(string, L.llvalue) Hash.t = Hash.create 50
 let array_info:(string, int) Hash.t = Hash.create 50
 
 (* Code Generation from the SAST. Returns an LLVM module if successful,
@@ -70,15 +68,10 @@ let translate (globals, functions) =
       StringMap.add name (L.define_function name ftype the_module, fdecl) m in
     List.fold_left function_decl StringMap.empty functions in
 
-  (* Fill in the body of the given function *)
-  let build_function_body fdecl =
-    let (the_function, _) = StringMap.find fdecl.sfname function_decls in
-    let builder = L.builder_at_end context (L.entry_block the_function) in
-
-    let int_format_str = L.build_global_stringptr "%d\n" "fmt" builder in
-    let string_format_str = L.build_global_stringptr "%s\n" "fmt" builder in
-    let float_format_str = L.build_global_stringptr "%g\n" "fmt" builder in
-    let bool_format_str = L.build_global_stringptr "%d\n" "fmt" builder in
+    let int_format_str builder = L.build_global_stringptr "%d\n" "fmt" builder in
+    let string_format_str builder = L.build_global_stringptr "%s\n" "fmt" builder in
+    let float_format_str builder = L.build_global_stringptr "%g\n" "fmt" builder in
+    let bool_format_str builder = L.build_global_stringptr "%d\n" "fmt" builder in
       
     let rec expr builder ((m, t, e) : sexpr) = match e with
         SLiteral i -> L.const_int i32_t i
@@ -90,16 +83,16 @@ let translate (globals, functions) =
       | SAssign(e1, e2) -> assign_gen builder e1 e2
       | SCall (id, e) -> (match id with
            "printf" ->  
-             L.build_call builtin_printf_func [| float_format_str ; (expr
+             L.build_call builtin_printf_func [| float_format_str builder ; (expr
                 builder (List.hd e)) |] "printf" builder
          | "printi"  -> 
-             L.build_call builtin_printf_func [| int_format_str ; (expr builder
+             L.build_call builtin_printf_func [| int_format_str builder ; (expr builder
                 (List.hd e)) |] "printf" builder
          | "prints"  -> 
-             L.build_call builtin_printf_func [| string_format_str ; (expr builder
+             L.build_call builtin_printf_func [| string_format_str builder ; (expr builder
                 (List.hd e)) |] "printf" builder
          | "printb"  -> 
-             L.build_call builtin_printf_func [| bool_format_str ; (expr builder
+             L.build_call builtin_printf_func [| bool_format_str builder ; (expr builder
                 (List.hd e)) |] "printf" builder
          | "render"  -> 
              L.build_call builtin_render_func [||] "render" builder
@@ -129,17 +122,16 @@ let translate (globals, functions) =
                 assign_gen builder e (m, t, SBinop(e, A.Sub, (m, t, SLiteral(1))))
               | _ -> L.build_sub e' (L.const_int i32_t 1) "sub" builder)
       )
-(* not needed
-      | SCall of string * sexpr list
-      | SNew of typ * sexpr list
-      | SSubArray of string * int * int
-      | SAccessStruct of string * string
-*)
       | _ -> to_imp "statement"
 
     and id_gen builder id deref =
         if Hash.mem local_values id then
             let _val = Hash.find local_values id in
+            if deref = true then
+              L.build_load _val id builder
+            else _val
+        else if Hash.mem global_values id then
+            let _val = Hash.find global_values id in
             if deref = true then
               L.build_load _val id builder
             else _val
@@ -248,6 +240,43 @@ let translate (globals, functions) =
         | _ -> raise(Failure("Unsupported unop for " ^ A.string_of_uop unop ^
           " and type " ^ A.string_of_typ t))
         in
+      
+  let build_vars svar_list hashtable builder =
+      let svar = List.hd svar_list in
+      let ((t, s), (m, et, e')) = svar in
+      let svar' = expr builder (m, et, e') in
+      let lltype = ltype_of_typ t in
+      let alloca = L.build_alloca lltype s builder in
+      let _ = (match t with
+          Array(_,size) -> Hash.add array_info s (match et with
+          Array(_,et_size) -> et_size
+            | _ -> 0)
+          | _ -> ()) in
+      let _ = Hash.add hashtable s alloca in
+      let _ = ignore(L.build_store svar' alloca builder) in builder in
+
+ let build_global svar_list = 
+     let svar = List.hd svar_list in
+      let ((t, s), _) = svar in
+      let lltype = ltype_of_typ t in
+      ignore(Hash.add global_values s (L.declare_global lltype s the_module)) in
+
+  let _ = List.iter build_global globals in 
+
+
+  (* Fill in the body of the given function *)
+  let build_function_body fdecl =
+    let (the_function, _) = StringMap.find fdecl.sfname function_decls in
+    let builder = L.builder_at_end context (L.entry_block the_function) in
+
+    let _ = (if fdecl.sfname="main" then
+        let declare_globals svar_list = 
+          let svar = List.hd svar_list in
+          let ((t, s), e') = svar in
+          let svar' = expr builder e' in
+          ignore(Hash.add global_values s (L.define_global s svar' the_module))
+        in List.iter declare_globals globals) in
+
 
     (* Each basic block in a program ends with a "terminator" instruction i.e.
     one that ends the basic block. By definition, these instructions must
@@ -297,18 +326,7 @@ let translate (globals, functions) =
 	    (map, ( SBlock [(map, SExpr e1) ; (map, SWhile (e2, (map, SBlock [body ;
             (map, SExpr e3)]))) ]))
       | SVarDecs(svar_list) -> (*TODO: multiple declarations in a line *)
-          let svar = List.hd svar_list in
-          let ((t, s), (m, et, e')) = svar in
-          let svar' = expr builder (m, et, e') in
-          let lltype = ltype_of_typ t in
-          let alloca = L.build_alloca lltype s builder in
-          let _ = (match t with
-              Array(_,size) -> Hash.add array_info s (match et with
-                  Array(_,et_size) -> et_size
-                | _ -> 0)
-            | _ -> ()) in
-          let _ = Hash.add local_values s alloca in
-          let _ = ignore(L.build_store svar' alloca builder) in builder
+            build_vars svar_list local_values builder
       | SIf (predicate, then_stmt, elseif_stmts, else_stmt) ->
         if_gen predicate then_stmt elseif_stmts else_stmt
       | SElseIf (_, _) -> raise(Failure("Should never reach SElseIf"))
