@@ -72,7 +72,14 @@ let translate (globals, functions) =
     let string_format_str builder = L.build_global_stringptr "%s\n" "fmt" builder in
     let float_format_str builder = L.build_global_stringptr "%g\n" "fmt" builder in
     let bool_format_str builder = L.build_global_stringptr "%d\n" "fmt" builder in
-      
+     
+    let gen_default_value t builder = match t with
+        A.Int -> L.const_int i32_t 0
+      | A.Float -> L.const_float float_t 0.0
+      | A.Bool -> L.const_int i1_t 0
+      | A.String -> L.build_global_stringptr "" "tmp" builder
+      | _ -> raise(Failure("No default value for this type")) in
+
     let rec expr builder ((m, t, e) : sexpr) = match e with
         SLiteral i -> L.const_int i32_t i
       | SStringLit st -> L.build_global_stringptr st "tmp" builder
@@ -252,7 +259,9 @@ let translate (globals, functions) =
   let build_vars svar_list hashtable builder =
       let svar = List.hd svar_list in
       let ((t, s), (m, et, e')) = svar in
-      let svar' = expr builder (m, et, e') in
+      let svar' = if et=A.Void then
+          gen_default_value t builder else
+          expr builder (m, et, e') in
       let lltype = ltype_of_typ t in
       let alloca = L.build_alloca lltype s builder in
       let _ = (match t with
@@ -280,8 +289,9 @@ let translate (globals, functions) =
     let _ = (if fdecl.sfname="main" then
         let declare_globals svar_list = 
           let svar = List.hd svar_list in
-          let ((t, s), e') = svar in
-          let svar' = expr builder e' in
+          let ((t, s), (m', t',e')) = svar in
+          let svar' = if t'=A.Void then
+            gen_default_value t builder else expr builder (m', t',e') in
           ignore(Hash.add global_values s (L.define_global s svar' the_module))
         in List.iter declare_globals globals) in
 

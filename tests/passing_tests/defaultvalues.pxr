@@ -1,0 +1,11 @@
+Int x;
+Float y;
+String z;
+Boolean b;
+
+Void main() {
+  print(x);
+  print(y);
+  print(b);
+  print(z);
+}
