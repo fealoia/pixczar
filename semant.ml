@@ -32,8 +32,9 @@ let check (globals, functions) =
     in to_check
   in
 
-  (**** Checking Global Variables ****)
 
+  let map_to_svar id typ resultlist = ((typ, id), (StringMap.empty, typ,
+    SNoexpr)) :: resultlist in
   let globals' = check_vars "global" globals in
 
 
@@ -69,10 +70,6 @@ let check (globals, functions) =
   in
 
   let _ = find_func "main" in (* Ensure "main" is defined *)
-
-  let check_function func =
-    (* Make sure no formals are void or duplicates *)
-    let formals' = check_binds "formal" func.formals in
 
     (* Raise an exception if the given rvalue type cannot be assigned to
        the given lvalue type *)
@@ -251,25 +248,19 @@ let check (globals, functions) =
       | AccessStruct(s, field) -> if true then raise (Failure ("AccessStructure not yet implemented")) else (map, Notyp, SSubArray("", 0, 0))
     in
 
-    (*let check_bool_expr e map=
-      let (map, t', e') = check_expr e map
-      and err = "expected Boolean expression in " ^ string_of_expr e
-      in if t' != Bool then raise (Failure err) else (map, t', e')
-    in*)
-
     (* Return a semantically-checked statement i.e. containing sexprs *)
-    let rec check_stmt e map = match e with
+    let rec check_stmt e map func = match e with
         Expr e -> (map, SExpr (check_expr e map))
-      | If(e, s1, s2, s3) -> (map, SIf(check_expr e map, check_stmt s1 map,
-                check_stmt s2 map, check_stmt s3 map))
-      | ElseIf(e, s) -> (map, SElseIf(check_expr e map, check_stmt s map))
+      | If(e, s1, s2, s3) -> (map, SIf(check_expr e map, check_stmt s1 map func,
+                check_stmt s2 map func, check_stmt s3 map func))
+      | ElseIf(e, s) -> (map, SElseIf(check_expr e map, check_stmt s map func))
       | CreateStruct(x,y) -> raise (Failure("CreateStruct not yet implemented"))
       | For(e1, e2, e3, st) -> let (x,y,z) = check_expr e1 map in
                                let (x', y',z') = check_expr e2 x in
                                let (x'',y'',z'') = check_expr e3 x' in
-      	  (x'', SFor((x,y,z), (x',y',z'), (x'',y'',z''), check_stmt st x''))
+      	  (x'', SFor((x,y,z), (x',y',z'), (x'',y'',z''), check_stmt st x'' func))
 
-      | While(p, s) -> (map, SWhile(check_expr p map, check_stmt s map))
+      | While(p, s) -> (map, SWhile(check_expr p map, check_stmt s map func))
       | Return e -> let (map, t, e') = check_expr e map in
         if t = func.typ then (map, SReturn (map, t, e'))
         else raise (
@@ -280,10 +271,10 @@ let check (globals, functions) =
 	       follows any Return statement.  Nested blocks are flattened. *)
       | Block sl ->
           let rec check_stmt_list e map = match e with
-              [Return _ as s] -> [check_stmt s map]
+              [Return _ as s] -> [check_stmt s map func]
             | Return _ :: _   -> raise (Failure "nothing may follow a return")
             | Block sl :: ss  -> check_stmt_list (sl @ ss) map (* Flatten blocks *)
-            | s :: ss         -> let (x,y) = check_stmt s map in (x,y) ::check_stmt_list ss x
+            | s :: ss         -> let (x,y) = check_stmt s map func in (x,y) ::check_stmt_list ss x
             | []              -> []
           in (map, SBlock(check_stmt_list sl map))
       | ObjCall(e, func, args) as s ->
@@ -325,10 +316,9 @@ let check (globals, functions) =
       | Break -> (map, SBreak)
       | _ -> raise (Failure("To implement statement"))
 
-    in let map_to_svar id typ resultlist = ((typ, id), (StringMap.empty, typ, (*ToDo: sloppy *)
-    SNoexpr)) :: resultlist
-
-    in let sbody_stmt = check_stmt (Block func.body) symbols
+      in let check_function func =
+    let formals' = check_binds "formal" func.formals in
+    let sbody_stmt = check_stmt (Block func.body) symbols func
 
     in (* body of check_function *)
     { styp = func.typ;
@@ -340,6 +330,17 @@ let check (globals, functions) =
       | _ -> let err = "internal error: block didn't become a block?"
       in raise (Failure err)
     }
+    
+  in let global_var_check map var_list = 
+    let (b, e) = get_first var_list
+    in let t = fst b and s = snd b
+    in let new_symbols = StringMap.add s t map
+    in let (map, t2, _) = check_expr e new_symbols
+    in let err = "LHS type of " ^ string_of_typ t ^ " not the same as " ^
+    "RHS type of " ^ string_of_typ t2 in
+    let _ = (if t2 <> Void then check_assign t t2 err else t) in map
+    
+    in let globals' = List.fold_left global_var_check StringMap.empty globals'
 
   (* ToDo: global variables *)
-  in ([], List.map check_function functions)
+    in ([StringMap.fold map_to_svar globals' []], List.map check_function functions)
