@@ -249,18 +249,20 @@ let check (globals, functions) =
     in
 
     (* Return a semantically-checked statement i.e. containing sexprs *)
-    let rec check_stmt e map func = match e with
+    let rec check_stmt e map func loop_count = match e with
         Expr e -> (map, SExpr (check_expr e map))
-      | If(e, s1, s2, s3) -> (map, SIf(check_expr e map, check_stmt s1 map func,
-                check_stmt s2 map func, check_stmt s3 map func))
-      | ElseIf(e, s) -> (map, SElseIf(check_expr e map, check_stmt s map func))
+      | If(e, s1, s2, s3) -> 
+          (map, SIf(check_expr e map, check_stmt s1 map func loop_count,
+          check_stmt s2 map func loop_count, check_stmt s3 map func loop_count))
+      | ElseIf(e, s) -> (map, SElseIf(check_expr e map, check_stmt s map func loop_count))
       | CreateStruct(x,y) -> raise (Failure("CreateStruct not yet implemented"))
       | For(e1, e2, e3, st) -> let (x,y,z) = check_expr e1 map in
                                let (x', y',z') = check_expr e2 x in
                                let (x'',y'',z'') = check_expr e3 x' in
-      	  (x'', SFor((x,y,z), (x',y',z'), (x'',y'',z''), check_stmt st x'' func))
-
-      | While(p, s) -> (map, SWhile(check_expr p map, check_stmt s map func))
+      	  (x'', SFor((x,y,z), (x',y',z'), (x'',y'',z''), check_stmt st x'' func
+          (loop_count + 1)))
+      | While(p, s) -> (map, SWhile(check_expr p map, check_stmt s map func
+          (loop_count + 1)))
       | Return e -> let (map, t, e') = check_expr e map in
         if t = func.typ then (map, SReturn (map, t, e'))
         else raise (
@@ -271,10 +273,11 @@ let check (globals, functions) =
 	       follows any Return statement.  Nested blocks are flattened. *)
       | Block sl ->
           let rec check_stmt_list e map = match e with
-              [Return _ as s] -> [check_stmt s map func]
+              [Return _ as s] -> [check_stmt s map func loop_count]
             | Return _ :: _   -> raise (Failure "nothing may follow a return")
             | Block sl :: ss  -> check_stmt_list (sl @ ss) map (* Flatten blocks *)
-            | s :: ss         -> let (x,y) = check_stmt s map func in (x,y) ::check_stmt_list ss x
+            | s :: ss         -> let (x,y) = check_stmt s map func loop_count
+                 in (x,y) ::check_stmt_list ss x
             | []              -> []
           in (map, SBlock(check_stmt_list sl map))
       | ObjCall(e, func, args) as s ->
@@ -312,13 +315,15 @@ let check (globals, functions) =
                                          let _ = if t2 <> Void then check_assign t t2 err else t in   
                                            (new_symbols, SVarDecs([(b, check_expr e new_symbols)])))
 
-      | Continue -> (map, SContinue)
-      | Break -> (map, SBreak)
+      | Continue -> if loop_count > 0 then (map, SContinue) else
+          raise(Failure("Continue statement not in loop"))
+      | Break -> if loop_count > 0 then (map, SBreak) else
+          raise(Failure("Break statement not in loop"))
       | _ -> raise (Failure("To implement statement"))
 
       in let check_function func =
     let formals' = check_binds "formal" func.formals in
-    let sbody_stmt = check_stmt (Block func.body) symbols func
+    let sbody_stmt = check_stmt (Block func.body) symbols func 0
 
     in (* body of check_function *)
     { styp = func.typ;
