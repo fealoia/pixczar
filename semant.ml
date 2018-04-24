@@ -90,7 +90,7 @@ let check (globals, functions) =
     (* Return a variable from our local symbol table *)
     let type_of_identifier s map =
       try StringMap.find s map
-      with Not_found -> raise (Failure ("undeclared identifier" ^ s))
+      with Not_found -> raise (Failure ("undeclared identifier " ^ s))
     in
 
     (* Return a semantically-checked expression, i.e., with a type *)

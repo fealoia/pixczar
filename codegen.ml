@@ -96,7 +96,15 @@ let translate (globals, functions) =
                 (List.hd e)) |] "printf" builder
          | "render"  -> 
              L.build_call builtin_render_func [||] "render" builder
-         | _ -> raise(Failure("Built-in function not implemented"))
+         | _ -> if StringMap.mem id function_decls then
+                  let (the_function, fdecl) = StringMap.find id function_decls in
+                  let build_expr_list expr_list e = (expr builder e) :: expr_list in
+                  let arg_list = Array.of_list(List.rev(
+                      List.fold_left build_expr_list [] e)) in
+                  if fdecl.styp = Void then
+                    L.build_call the_function arg_list "" builder else
+                    L.build_call the_function arg_list id builder
+                else raise(Failure("Built-in function not implemented"))
         )
       | SBinop (e1, op, e2) -> binop_gen builder e1 op e2
       | SUnop(op, e) -> unop_gen builder op e
