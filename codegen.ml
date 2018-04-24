@@ -310,9 +310,10 @@ let translate (globals, functions) =
 (*
   This function generates code for statements
 *)
-    let rec stmt builder (map, ss) = match ss with
+    let rec stmt builder (map, ss) loop_list = match ss with
         SExpr e -> let _ = expr builder e in builder
-      | SBlock sl -> List.fold_left stmt builder sl
+      | SBlock sl -> let stmt_block builder s = stmt builder s loop_list in
+          List.fold_left stmt_block builder sl
       | SReturn e -> let _ = match fdecl.styp with
                               A.Int -> L.build_ret (expr builder e) builder
                             | _ -> to_imp (A.string_of_typ fdecl.styp)
@@ -323,34 +324,34 @@ let translate (globals, functions) =
         let pred_bb = L.append_block context "while" the_function in
               (* In current block, branch to predicate to execute the condition *)
         let _ = L.build_br pred_bb builder in
+        let merge_bb = L.append_block context "merge" the_function in
 
               (* Create the body's block, generate the code for it, and add a branch
               back to the predicate block (we always jump back at the end of a while
               loop's body, unless we returned or something) *)
         let body_bb = L.append_block context "while_body" the_function in
-              let while_builder = stmt (L.builder_at_end context body_bb) body in
+              let while_builder = stmt (L.builder_at_end context body_bb) body
+              ((pred_bb, merge_bb) :: loop_list) in
         let () = add_terminal while_builder (L.build_br pred_bb) in
 
               (* Generate the predicate code in the predicate block *)
         let pred_builder = L.builder_at_end context pred_bb in
         let bool_val = expr pred_builder predicate in
 
-              (* Hook everything up *)
-        let merge_bb = L.append_block context "merge" the_function in
         let _ = L.build_cond_br bool_val body_bb merge_bb pred_builder in
         L.builder_at_end context merge_bb
 
       | SFor (e1, e2, e3, body) -> stmt builder
 	    (map, ( SBlock [(map, SExpr e1) ; (map, SWhile (e2, (map, SBlock [body ;
-            (map, SExpr e3)]))) ]))
+            (map, SExpr e3)]))) ])) loop_list
       | SVarDecs(svar_list) -> (*TODO: multiple declarations in a line *)
             build_vars svar_list local_values builder
       | SIf (predicate, then_stmt, elseif_stmts, else_stmt) ->
-        if_gen predicate then_stmt elseif_stmts else_stmt
+              if_gen predicate then_stmt elseif_stmts else_stmt loop_list
       | SElseIf (_, _) -> raise(Failure("Should never reach SElseIf"))
       | s -> to_imp (string_of_sstmt (map, ss))
 
-    and if_gen predicate then_stmt elseif_stmts else_stmt =
+    and if_gen predicate then_stmt elseif_stmts else_stmt loop_list =
       let if_bool_val = expr builder predicate in
       let if_bb = L.append_block context "if" the_function in
       let () = add_terminal builder (L.build_br if_bb) in
@@ -359,25 +360,28 @@ let translate (globals, functions) =
       let branch_instr = L.build_br merge_bb in
 
       let then_bb = L.append_block context "then" the_function in
-      let then_builder = stmt (L.builder_at_end context then_bb) then_stmt in
+      let then_builder = stmt (L.builder_at_end context then_bb) then_stmt
+        loop_list in
       let () = add_terminal then_builder branch_instr in
       
       let else_bb = L.append_block context "else" the_function in
-      let else_builder = stmt (L.builder_at_end context else_bb) else_stmt in
+      let else_builder = stmt (L.builder_at_end context else_bb) else_stmt
+        loop_list in
       let () = add_terminal else_builder branch_instr in
 
-      let rec elseif_bb_gen elseif_list bool_val pred_bb body_bb = match elseif_list with
+      let rec elseif_bb_gen elseif_list bool_val pred_bb body_bb loop_list = match elseif_list with
            (_, SElseIf(pred, body)) :: tl -> 
              let elseif_pred_val = expr (L.builder_at_end context pred_bb) pred in
              let elseif_pred_bb = L.append_block context "elseif_pred" the_function in
              
              let elseif_body_bb = L.append_block context "elseif_body" the_function in
-             let elseif_builder = stmt (L.builder_at_end context elseif_body_bb) body in
+             let elseif_builder = stmt (L.builder_at_end context elseif_body_bb)
+               body loop_list in
              let () = add_terminal elseif_builder branch_instr in
 
              let _ = L.build_cond_br bool_val body_bb elseif_pred_bb
                 (L.builder_at_end context pred_bb)
-             in elseif_bb_gen tl elseif_pred_val elseif_pred_bb elseif_body_bb
+             in elseif_bb_gen tl elseif_pred_val elseif_pred_bb elseif_body_bb loop_list
 
          | _ -> L.build_cond_br bool_val body_bb else_bb 
                 (L.builder_at_end context pred_bb)
@@ -385,11 +389,11 @@ let translate (globals, functions) =
            (_, SBlock(elseif_ss)) -> elseif_ss
          | _ -> raise(Failure("Elseif must contain a Block"))
        
-      in let _ = elseif_bb_gen elseif_ss if_bool_val if_bb then_bb in
+       in let _ = elseif_bb_gen elseif_ss if_bool_val if_bb then_bb loop_list in
        L.builder_at_end context merge_bb
     in
       (* Build the code for each statement in the function *)
-    let builder = stmt builder (StringMap.empty, SBlock fdecl.sbody) in
+    let builder = stmt builder (StringMap.empty, SBlock fdecl.sbody) [] in
 
     (* Add a return if the last block falls off the end *)
     add_terminal builder (match fdecl.styp with
