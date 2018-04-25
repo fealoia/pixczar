@@ -260,26 +260,29 @@ let translate (globals, functions) =
         in
       
   let build_vars svar_list hashtable builder =
-      let svar = List.hd svar_list in
-      let ((t, s), (m, et, e')) = svar in
-      let svar' = if et=A.Void then
-          gen_default_value t builder else
-          expr builder (m, et, e') in
-      let lltype = ltype_of_typ t in
-      let alloca = L.build_alloca lltype s builder in
-      let _ = (match t with
-          Array(_,size) -> Hash.add array_info s (match et with
-          Array(_,et_size) -> et_size
-            | _ -> 0)
-          | _ -> ()) in
-      let _ = Hash.add hashtable s alloca in
-      let _ = ignore(L.build_store svar' alloca builder) in builder in
+      let ((t,_),_) = List.hd svar_list in
+      let build_var builder svar = 
+          let ((_, s), (m, et, e')) = svar in
+          let svar' = if et=A.Void then
+              gen_default_value t builder else
+              expr builder (m, et, e') in
+          let lltype = ltype_of_typ t in
+          let alloca = L.build_alloca lltype s builder in
+          let _ = (match t with
+              Array(_,size) -> Hash.add array_info s (match et with
+              Array(_,et_size) -> et_size
+                | _ -> 0)
+              | _ -> ()) in
+          let _ = Hash.add hashtable s alloca in
+          let _ = ignore(L.build_store svar' alloca builder) in builder
+       in List.fold_left build_var builder svar_list in
 
  let build_global svar_list = 
-     let svar = List.hd svar_list in
+     let build_svar svar =
       let ((t, s), _) = svar in
       let lltype = ltype_of_typ t in
       ignore(Hash.add global_values s (L.declare_global lltype s the_module)) in
+     List.iter build_svar svar_list in
 
   let _ = List.iter build_global globals in 
 
@@ -298,12 +301,14 @@ let translate (globals, functions) =
     let builder = L.builder_at_end context (L.entry_block the_function) in
 
     let _ = (if fdecl.sfname="main" then
-        let declare_globals svar_list = 
-          let svar = List.hd svar_list in
-          let ((t, s), (m', t',e')) = svar in
+        let declare_globals svar_list =
+          let ((t,_),_) = List.hd svar_list in
+          let declare_svar svar =  
+          let ((_, s), (m', t',e')) = svar in
           let svar' = if t'=A.Void then
             gen_default_value t builder else expr builder (m', t',e') in
           ignore(Hash.add global_values s (L.define_global s svar' the_module))
+          in List.iter declare_svar svar_list
         in List.iter declare_globals globals) in
 
 
@@ -354,7 +359,7 @@ let translate (globals, functions) =
       | SFor (e1, e2, e3, body) -> stmt builder
 	    (map, ( SBlock [(map, SExpr e1) ; (map, SWhile (e2, (map, SBlock [body ;
             (map, SExpr e3)]))) ])) loop_list
-      | SVarDecs(svar_list) -> (*TODO: multiple declarations in a line *)
+      | SVarDecs(svar_list) ->
             build_vars svar_list local_values builder
       | SIf (predicate, then_stmt, elseif_stmts, else_stmt) ->
               if_gen builder predicate then_stmt elseif_stmts else_stmt loop_list

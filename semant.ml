@@ -24,8 +24,12 @@ let check (globals, functions) =
     | _ -> ((Notyp, ""), Noexpr) in
  
   let get_binds var_list_list =
-     let rec fold_list combine var_list = (match var_list with
-          hd :: tl -> fold_list ((fst hd) :: combine) tl
+     let rec fold_list combine var_list =
+       let t = if (List.length combine)=0 
+           then fst(fst(List.hd var_list))
+           else fst (List.hd combine)
+       in (match var_list with
+          ((_,s),_) :: tl -> fold_list ((t,s) :: combine) tl
         | _ -> combine) in
      List.fold_left fold_list [] var_list_list in
 
@@ -161,7 +165,7 @@ let check (globals, functions) =
           "print" -> if List.length args != 1 then
               raise (Failure ("expecting 1 argument in print"))
            else let (m, et, e') = check_expr (List.hd args) map in (match et with
-           Int -> (map, Void, SCall("printi", [m, et, e']))
+               Int -> (map, Void, SCall("printi", [m, et, e']))
              | Float -> (map, Void, SCall("printf", [m, et, e']))
              | String -> (map, Void, SCall("prints", [m, et, e']))
              | Bool -> (map, Void, SCall("printb", [m, et, e']))
@@ -306,7 +310,7 @@ let check (globals, functions) =
           in check_it
 
       | VarDecs(field) -> let t = fst (fst (get_first field)) in 
-         let vardecs (_, vardecs_list) (b, e) = 
+         let vardecs (map, vardecs_list) (b, e) = 
          let s = snd b
          in let _ = (if t=Void then raise(Failure("Void type declaration")))
          in (if StringMap.mem s map then raise ( Failure ("Duplicate variable declaration " ^ s))
@@ -341,13 +345,13 @@ let check (globals, functions) =
     }
     
     in let global_var_check svar_list var_list =
-      let t = fst (fst (get_first var_list)) in 
-      let vardecs vardecs_list (b, e) =
+      let t = fst (fst (get_first var_list)) in
+      let vardecs vardecs_list ((_,s), e) =
         let (map2,t2,e2) = check_expr e StringMap.empty
         in let err = "LHS type of " ^ string_of_typ t ^ " not the same as " ^
         "RHS type of " ^ string_of_typ t2 in
         let _ = (if t2 <> Void then check_assign t t2 err else t)
-        in (b, (map2,t2,e2)) :: vardecs_list
+        in ((t,s), (map2,t2,e2)) :: vardecs_list
       in let vardecs_list = List.rev (List.fold_left vardecs [] var_list)
       in vardecs_list :: svar_list
     
