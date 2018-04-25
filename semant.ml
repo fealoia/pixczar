@@ -202,7 +202,6 @@ let check (globals, functions) =
                         string_of_typ t))
           in new_obj
       | NewArray(s, size) as e ->
-          (* ToDo: structs, matrices? *)
           let arr = match s with
               Int       -> (map, Array(Int, size), SNewArray(Int, size))
             | Float     -> (map, Array(Float, size), SNewArray(Float, size))
@@ -307,6 +306,7 @@ let check (globals, functions) =
       | VarDecs(field) -> let (b, e) = get_first field
                           in let t = fst b
                              and s = snd b
+                             in let _ = (if t=Void then raise(Failure("Void type declaration")))
                              in (if StringMap.mem s map then raise ( Failure ("Duplicate variable declaration " ^ s))
                                  else let new_symbols = StringMap.add s t map
                                       in let (map, t2, _) = check_expr e new_symbols
