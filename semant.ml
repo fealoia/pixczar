@@ -22,21 +22,23 @@ let check (globals, functions) =
   in let get_first lst = match lst with
       hd :: tl -> hd
     | _ -> ((Notyp, ""), Noexpr) (* Temporary *) in
+ 
+  let get_binds var_list_list =
+     let rec fold_list combine var_list = (match var_list with
+          hd :: tl -> fold_list ((fst hd) :: combine) tl
+        | _ -> combine) in
+     List.fold_left fold_list [] var_list_list in
 
- (* Check vars to see if duplicate or void type *)
- (* ToDo: multiple declarations on same line *)
+      (* Check vars to see if duplicate or void type *)
   let check_vars (kind : string) (to_check: var list list) =
-    let to_check_vars = List.map get_first to_check
-    in let to_check_vars = List.map fst to_check_vars
-      in let _ = check_binds kind to_check_vars
+      let combined_list = get_binds to_check in
+      let _ = ignore(check_binds kind combined_list)
     in to_check
   in
-
 
   let map_to_svar id typ resultlist = ((typ, id), (StringMap.empty, typ,
     SNoexpr)) :: resultlist in
   let globals' = check_vars "global" globals in
-
 
   (* Collect function declarations for built-in functions: no bodies *)
   let built_in_decls =
@@ -84,7 +86,7 @@ let check (globals, functions) =
 
     (* Build local symbol table of variables for this function *)
     let symbols = List.fold_left (fun m (ty, name) -> StringMap.add name ty m)
-	                StringMap.empty ((List.map fst (List.map get_first globals')))
+	                StringMap.empty (get_binds globals')
     in
 
     (* Return a variable from our local symbol table *)
