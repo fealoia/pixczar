@@ -119,7 +119,6 @@ let translate (globals, functions) =
       | SNew(t, el) -> (match t with
           Pix         -> L.build_malloc (ltype_of_typ t) "pix_create" builder
           | _ -> to_imp "Additional types")
-
       | SNewArray(t, size) -> let lt = ltype_of_typ t 
         in create_array_gen builder lt size
       | SCreateArray(el) -> let e = List.hd el in let (_, t, _) = e in
@@ -284,6 +283,14 @@ let translate (globals, functions) =
 
   let _ = List.iter build_global globals in 
 
+  let bool_pred_gen builder e = let (_,t,sx) = e in
+    let e' = expr builder e in (match t with
+        A.Bool -> e'
+      | A.Int -> L.build_icmp L.Icmp.Sgt e' (L.const_int i32_t 0) "tmp" builder
+      | A.Float -> L.build_fcmp L.Fcmp.Ogt e' (L.const_float float_t 0.0) "tmp" builder
+      | _ -> (match sx with
+          SNullLit -> L.const_int i1_t 0
+        | _ -> L.const_int i1_t 1)) in
 
   (* Fill in the body of the given function *)
   let build_function_body fdecl =
@@ -339,7 +346,7 @@ let translate (globals, functions) =
          let () = add_terminal while_builder (L.build_br pred_bb) in
               (* Generate the predicate code in the predicate block *)
         let pred_builder = L.builder_at_end context pred_bb in
-        let bool_val = expr pred_builder predicate in
+        let bool_val = bool_pred_gen pred_builder predicate in
 
         let _ = L.build_cond_br bool_val body_bb merge_bb pred_builder in
         L.builder_at_end context merge_bb
@@ -359,7 +366,7 @@ let translate (globals, functions) =
       | s -> to_imp (string_of_sstmt (map, ss))
 
     and if_gen builder predicate then_stmt elseif_stmts else_stmt loop_list =
-      let if_bool_val = expr builder predicate in
+      let if_bool_val = bool_pred_gen builder predicate in
       let if_bb = L.append_block context "if" the_function in
       let () = add_terminal builder (L.build_br if_bb) in
       
