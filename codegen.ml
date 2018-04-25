@@ -201,26 +201,27 @@ let translate (globals, functions) =
       let arr_val = L.build_gep arr [| index |] "arr_access" builder in
       if is_assign then arr_val
       else L.build_load arr_val "arr_access_val" builder
-    
-    and binop_gen  builder e1 op e2 =
-      let (_, t, _) = e1
+   
+    and f_op op = match op with
+        A.Add     -> L.build_fadd
+      | A.Sub     -> L.build_fsub
+      | A.Mult    -> L.build_fmul
+      | A.Div     -> L.build_fdiv
+      | A.Equal   -> L.build_fcmp L.Fcmp.Oeq
+      | A.Neq     -> L.build_fcmp L.Fcmp.One
+      | A.Less    -> L.build_fcmp L.Fcmp.Olt
+      | A.Leq     -> L.build_fcmp L.Fcmp.Ole
+      | A.Greater -> L.build_fcmp L.Fcmp.Ogt
+      | A.Geq     -> L.build_fcmp L.Fcmp.Oge
+      | A.And | A.Or | A.Mod ->
+          raise (Failure "internal error: semant should have rejected and/or on float")
+
+    and binop_gen builder e1 op e2 =
+      let (_, t1, _) = e1 and (_, t2, _) = e2
         and e1' = expr builder e1
-        and e2' = expr builder e2
-        in if t = A.Float then (match op with
-            A.Add     -> L.build_fadd
-          | A.Sub     -> L.build_fsub
-          | A.Mult    -> L.build_fmul
-          | A.Div     -> L.build_fdiv
-          | A.Equal   -> L.build_fcmp L.Fcmp.Oeq
-          | A.Neq     -> L.build_fcmp L.Fcmp.One
-          | A.Less    -> L.build_fcmp L.Fcmp.Olt
-          | A.Leq     -> L.build_fcmp L.Fcmp.Ole
-          | A.Greater -> L.build_fcmp L.Fcmp.Ogt
-          | A.Geq     -> L.build_fcmp L.Fcmp.Oge
-          | A.And | A.Or | A.Mod ->
-              raise (Failure "internal error: semant should have rejected and/or on float")
-          ) e1' e2' "tmp" builder
-        else (match op with
+        and e2' = expr builder e2 in 
+        if t1=t2 && t1 = A.Float then (f_op op) e1' e2' "tmp" builder
+        else if t1=t2 then (match op with
           | A.Add     -> L.build_add
           | A.Sub     -> L.build_sub
           | A.Mult    -> L.build_mul
@@ -235,7 +236,10 @@ let translate (globals, functions) =
           | A.Greater -> L.build_icmp L.Icmp.Sgt
           | A.Geq     -> L.build_icmp L.Icmp.Sge
           ) e1' e2' "tmp" builder
-    
+       else 
+          (f_op op) (if t1=Int then L.const_sitofp e1' float_t else e1')
+          (if t2=Int then L.const_sitofp e2' float_t else e2') "tmp" builder
+
       and unop_gen builder unop e =
       let unop_lval = expr builder e
       and (m, t, e') = e in match unop, t with
