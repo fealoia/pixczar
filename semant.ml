@@ -21,7 +21,7 @@ let check (globals, functions) =
        in to_check
   in let get_first lst = match lst with
       hd :: tl -> hd
-    | _ -> ((Notyp, ""), Noexpr) (* Temporary *) in
+    | _ -> ((Notyp, ""), Noexpr) in
  
   let get_binds var_list_list =
      let rec fold_list combine var_list = (match var_list with
@@ -305,17 +305,19 @@ let check (globals, functions) =
             | _ -> raise (Failure(err))
           in check_it
 
-      | VarDecs(field) -> let (b, e) = get_first field
-                          in let t = fst b
-                             and s = snd b
-                             in let _ = (if t=Void then raise(Failure("Void type declaration")))
-                             in (if StringMap.mem s map then raise ( Failure ("Duplicate variable declaration " ^ s))
-                                 else let new_symbols = StringMap.add s t map
-                                      in let (map, t2, _) = check_expr e new_symbols
-                                         in let err = "LHS type of " ^ string_of_typ t ^ " not the same as " ^
-                                           "RHS type of " ^ string_of_typ t2 in
-                                         let _ = if t2 <> Void then check_assign t t2 err else t in   
-                                           (new_symbols, SVarDecs([(b, check_expr e new_symbols)])))
+      | VarDecs(field) -> let t = fst (fst (get_first field)) in 
+         let vardecs (_, vardecs_list) (b, e) = 
+         let s = snd b
+         in let _ = (if t=Void then raise(Failure("Void type declaration")))
+         in (if StringMap.mem s map then raise ( Failure ("Duplicate variable declaration " ^ s))
+             else let new_symbols = StringMap.add s t map
+                  in let (map, t2, _) = check_expr e new_symbols
+                     in let err = "LHS type of " ^ string_of_typ t ^ " not the same as " ^
+                       "RHS type of " ^ string_of_typ t2 in
+                     let _ = if t2 <> Void then check_assign t t2 err else t in
+             (new_symbols, (b, check_expr e new_symbols) :: vardecs_list)) in
+         let (new_symbols, vardecs_list) = List.fold_left vardecs (map, []) field in 
+            (new_symbols, SVarDecs(List.rev vardecs_list))
 
       | Continue -> if loop_count > 0 then (map, SContinue) else
           raise(Failure("Continue statement not in loop"))
@@ -338,16 +340,16 @@ let check (globals, functions) =
       in raise (Failure err)
     }
     
-    in let global_var_check svar_list var_list = 
-        let (b, e) = get_first var_list
-        in let t = fst b
-        in let (map2,t2,e2) = check_expr e StringMap.empty
+    in let global_var_check svar_list var_list =
+      let t = fst (fst (get_first var_list)) in 
+      let vardecs vardecs_list (b, e) =
+        let (map2,t2,e2) = check_expr e StringMap.empty
         in let err = "LHS type of " ^ string_of_typ t ^ " not the same as " ^
         "RHS type of " ^ string_of_typ t2 in
         let _ = (if t2 <> Void then check_assign t t2 err else t)
-        in [(b, (map2,t2,e2))] :: svar_list
+        in (b, (map2,t2,e2)) :: vardecs_list
+      in let vardecs_list = List.rev (List.fold_left vardecs [] var_list)
+      in vardecs_list :: svar_list
     
     in let globals' = List.fold_left global_var_check [] globals'
-
-  (* ToDo: global variables *)
     in (globals', List.map check_function functions)
