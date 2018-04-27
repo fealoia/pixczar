@@ -1,0 +1,16 @@
+Int x;
+
+Void add10() {
+    x = x + 10;
+}
+
+Void add20() {
+    x = x + 20;
+}
+
+Void main() {
+    x = 0;
+    add10();
+    add20();
+    print(x);
+}

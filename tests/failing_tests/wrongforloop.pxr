@@ -1,0 +1,10 @@
+Void main() {
+	for(Int i=0; i<"hello"; i++){
+		print("hi");
+	}
+
+	for (Int i="zero"; i<"hello"; i++){
+		print("hi");
+	}
+
+}

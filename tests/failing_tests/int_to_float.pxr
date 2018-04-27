@@ -1,0 +1,5 @@
+Void main() {
+	Int x = 3;
+	x = 3.5;
+	print(x);
+}

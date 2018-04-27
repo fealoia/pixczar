@@ -1,0 +1,6 @@
+Void main() {
+	print(!true);
+	print(!false);
+	print(-3);
+	print(-(-3));
+}

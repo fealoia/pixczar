@@ -1,0 +1,8 @@
+Int retint(){
+	return 3;
+}
+
+
+Void main() {
+	print(retint());
+}

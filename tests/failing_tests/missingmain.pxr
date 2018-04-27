@@ -1,0 +1,3 @@
+Void notmain(){
+	print("hello");
+}
