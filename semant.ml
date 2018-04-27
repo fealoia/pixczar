@@ -23,15 +23,19 @@ let check (globals, functions) =
       hd :: tl -> hd
     | _ -> ((Notyp, ""), Noexpr) in
  
+  let rec add_types typed_list var_list = (match var_list with
+        ((_,s),e) :: tl -> let t = fst (fst (List.hd var_list)) in
+          add_types (((t,s),e) :: typed_list) tl
+      | _ -> typed_list) in
+
   let get_binds var_list_list =
-     let rec fold_list combine var_list =
-       let t = if (List.length combine)=0 
-           then fst(fst(List.hd var_list))
-           else fst (List.hd combine)
-       in (match var_list with
-          ((_,s),_) :: tl -> fold_list ((t,s) :: combine) tl
-        | _ -> combine) in
-     List.fold_left fold_list [] var_list_list in
+     let fold_types combine var_list =
+         let var_list = List.rev (add_types [] var_list) in
+         let rec fold_list combine var_list = (match var_list with
+              ((t,s),_) :: tl -> fold_list ((t,s) :: combine) tl
+            | _ -> combine)
+         in fold_list combine var_list in
+     List.fold_left fold_types [] var_list_list in
 
       (* Check vars to see if duplicate or void type *)
   let check_vars (kind : string) (to_check: var list list) =
