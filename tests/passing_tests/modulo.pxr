@@ -1,0 +1,8 @@
+Void main() {
+	Int x = 6;
+	Int y = 5;
+	Int z = 3;
+	print(x%y);
+	print(x%z);
+	print(z%x);
+}

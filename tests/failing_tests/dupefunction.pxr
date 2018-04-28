@@ -1,0 +1,11 @@
+Void func(){
+	print("i am the original");
+}
+
+Void func(){
+	print("i am a duplicate");
+}
+
+Void main() {
+	func();
+}

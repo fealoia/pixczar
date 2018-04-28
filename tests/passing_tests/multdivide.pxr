@@ -1,0 +1,11 @@
+Void main() {
+	Int x = 6;
+	Int y = 3;
+	print(x*y);
+	print(x/y);
+
+	Float a = 2.4;
+	Float b = 1.2;
+	print(a*b);
+	print(a/b);
+}

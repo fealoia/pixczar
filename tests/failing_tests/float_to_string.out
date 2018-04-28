@@ -1,0 +1,1 @@
+Fatal error: exception Failure("illegal assignment Float = String in x = "hello"")

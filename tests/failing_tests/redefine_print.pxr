@@ -1,0 +1,8 @@
+Int x = 0;
+Void print(){
+	x = 1;
+}
+
+Void main() {
+	print();
+}

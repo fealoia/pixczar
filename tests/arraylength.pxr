@@ -1,0 +1,4 @@
+Void main() {
+  Int[] arr = new Int[10];
+  print(length(arr[0]));
+}

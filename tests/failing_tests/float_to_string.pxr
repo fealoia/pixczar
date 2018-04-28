@@ -1,0 +1,5 @@
+Void main() {
+	Float x = 3.5;
+	x = "hello";
+	print(x);
+}

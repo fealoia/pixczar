@@ -1,0 +1,5 @@
+Void main() {
+	Int[] arr = new Int[10];
+	arr[5] = 10;
+	print(arr[(2+3)]);
+}
