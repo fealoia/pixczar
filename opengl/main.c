@@ -6,7 +6,12 @@
 
 const GLint WIDTH = 800, HEIGHT = 600;
 
-int render() {
+struct frame {
+    int width;
+    int height;
+} typedef frame;
+
+int render(frame *frames[], int fps) {
     glfwInit();
     
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -14,8 +19,11 @@ int render() {
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
     glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
-
-    GLFWwindow *window = glfwCreateWindow(WIDTH, HEIGHT, "PixCzar", NULL, NULL);
+    
+    char buff[10];
+    sprintf(buff, "%d",frames[1]->width);
+    
+    GLFWwindow *window = glfwCreateWindow(WIDTH, HEIGHT, buff, NULL, NULL);
     
     int screenWidth, screenHeight;
     glfwGetFramebufferSize( window, &screenWidth, &screenHeight);

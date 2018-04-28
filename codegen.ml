@@ -20,13 +20,17 @@ let translate (globals, functions) =
   and str_t       = L.pointer_type (L.i8_type context)
   and float_t     = L.double_type context
   and i1_t        = L.i1_type     context in
-  let pix_t       = L.struct_type context [|
-      (* Currently only holding width, height, need rgb*)
-      i32_t; i32_t; |] in
-  let placement_t = L.struct_type context [|
-      L.pointer_type (pix_t); i32_t; i32_t; i32_t; i32_t; |] in
-  let frame_t = L.struct_type context [|
-      i32_t; i32_t; L.pointer_type (placement_t) |] in
+
+  let pix_struct   = L.named_struct_type context "pix" in
+    let () = L.struct_set_body pix_struct [||] false in
+  let pix_t = L.pointer_type pix_struct in
+  let placement_struct   = L.named_struct_type context "placement" in
+    let () = L.struct_set_body placement_struct
+       [|L.pointer_type (pix_t); i32_t; i32_t; i32_t; i32_t; |] false in
+  let placement_t = L.pointer_type pix_struct in
+  let frame_struct   = L.named_struct_type context "frame" in
+    let () = L.struct_set_body frame_struct [|i32_t; i32_t;|] false in
+  let frame_t = L.pointer_type frame_struct in
 
   let the_module = L.create_module context "PixCzar" in
 
@@ -50,12 +54,11 @@ let translate (globals, functions) =
   let builtin_printf_func : L.llvalue =
      L.declare_function "printf" builtin_printf_t the_module in
   let builtin_render_t : L.lltype =
-      L.var_arg_function_type i32_t [||] in
+      L.var_arg_function_type i32_t [| L.pointer_type frame_t; i32_t |] in
   let builtin_render_func : L.llvalue =
      L.declare_function "render" builtin_render_t the_module in
       
-
-  let to_imp str = raise (Failure ("Not yet implemented1: " ^ str)) in
+  let to_imp str = raise (Failure ("Not yet implemented: " ^ str)) in
 
   (* Define each function (arguments and return type) so we can
    * define it's body and call it later *)
@@ -80,6 +83,14 @@ let translate (globals, functions) =
       | A.String -> L.build_global_stringptr "" "tmp" builder
       | _ -> raise(Failure("No default value for this type")) in
 
+    let typ_malloc typ_ptr typ_struct el_arr builder = 
+       let struct_malloc = L.build_malloc (L.element_type typ_ptr) "malloc" builder in
+       let alloca = L.build_alloca typ_ptr "typ" builder in
+       let struct_val = L.const_named_struct typ_struct el_arr in
+        let _ = ignore(L.build_store struct_val struct_malloc builder) in
+        let _ = ignore(L.build_store struct_malloc alloca builder) in
+        L.build_pointercast struct_malloc typ_ptr "cast" builder in
+
     let rec expr builder ((m, t, e) : sexpr) = match e with
         SLiteral i -> L.const_int i32_t i
       | SStringLit st -> L.build_global_stringptr st "tmp" builder
@@ -101,8 +112,9 @@ let translate (globals, functions) =
          | "printb"  -> 
              L.build_call builtin_printf_func [| bool_format_str builder ; (expr builder
                 (List.hd e)) |] "printf" builder
-         | "render"  -> 
-             L.build_call builtin_render_func [||] "render" builder
+         | "render"  -> let frames = List.hd e in let fps = List.nth e 1 in 
+         L.build_call builtin_render_func [| expr builder frames; expr builder
+         fps  |] "render" builder
          | _ -> if StringMap.mem id function_decls then
                   let (the_function, fdecl) = StringMap.find id function_decls in
                   let build_expr_list expr_list e = (expr builder e) :: expr_list in
@@ -116,9 +128,14 @@ let translate (globals, functions) =
       | SBinop (e1, op, e2) -> binop_gen builder e1 op e2
       | SUnop(op, e) -> unop_gen builder op e
       | SNullLit -> L.const_null i32_t
-      | SNew(t, el) -> (match t with
-          Pix         -> L.build_malloc (ltype_of_typ t) "pix_create" builder
-          | _ -> to_imp "Additional types")
+      | SNew(t, el) -> let rec to_ll ll_list el_list = (match el_list with
+          hd :: tl -> to_ll ((expr builder hd) :: ll_list) tl
+        | _ -> List.rev(ll_list)) in let arr = Array.of_list(to_ll [] el) in
+          (match t with (*ToDo: garbage collection*)
+          Pix -> typ_malloc pix_t pix_struct arr builder
+        | Placement -> typ_malloc placement_t placement_struct arr builder
+        | Frame -> typ_malloc frame_t frame_struct arr builder
+        | _ -> to_imp "Additional types")
       | SNewArray(t, size) -> let lt = ltype_of_typ t 
         in create_array_gen builder lt size
       | SCreateArray(el) -> let e = List.hd el in let (_, t, _) = e in

@@ -53,8 +53,8 @@ let check (globals, functions) =
     let add_bind map (name, typ, formal_vars) = StringMap.add name {
       typ = Void; fname = name;
       formals = formal_vars; locals = []; body = [] } map
-    in List.fold_left add_bind StringMap.empty [ (*("render", Void,
-    [(Array(Frame), "frames"); (Int, "fps") ]);*)("render", Void, []);]
+    in List.fold_left add_bind StringMap.empty [("render", Void,
+    [(Array(Frame,-1), "frames"); (Int, "fps") ])]
   in
 
   (* Add function name to symbol table *)
