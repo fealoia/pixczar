@@ -54,7 +54,7 @@ let translate (globals, functions) =
   let builtin_printf_func : L.llvalue =
      L.declare_function "printf" builtin_printf_t the_module in
   let builtin_render_t : L.lltype =
-      L.var_arg_function_type i32_t [| L.pointer_type frame_t; i32_t; i32_t;
+      L.var_arg_function_type i32_t [| i32_t; L.pointer_type frame_t; i32_t; i32_t;
       i32_t; |] in
   let builtin_render_func : L.llvalue =
      L.declare_function "render" builtin_render_t the_module in
@@ -117,10 +117,12 @@ let translate (globals, functions) =
          | "printb"  -> 
              L.build_call builtin_printf_func [| bool_format_str builder ; (expr builder
                 (List.hd e)) |] "printf" builder
-         | "render"  -> let (_,A.Array(_,frame_array_size),_) = List.hd e in
-           L.build_call builtin_render_func (Array.of_list
-            (List.rev (List.fold_left build_expr_list (*[L.const_int i32_t
-            frame_array_size]*) [] e))) "render" builder
+         | "render"  -> let size = (match List.hd e with
+            | (_,A.Array(_,size),_) -> size
+            | _ -> raise(Failure("Invalid render input"))) in
+             let arg_list = (List.rev (List.fold_left build_expr_list
+               [L.const_int i32_t (size+1)] e)) in
+             L.build_call builtin_render_func (Array.of_list arg_list) "render" builder
          | _ -> if StringMap.mem id function_decls then
                   let (the_function, fdecl) = StringMap.find id function_decls in
                   let arg_list = Array.of_list
@@ -195,13 +197,13 @@ let translate (globals, functions) =
       rhs
 
     and create_array_gen builder lt size =
-      let size_arr =  L.const_int i32_t (size+1) in (*Including space to store size*)
+      let size_arr =  L.const_int i32_t (size) in
       let arr = L.build_array_malloc lt size_arr "array_gen" builder in
       L.build_pointercast arr (L.pointer_type lt) "array_cast" builder
 
     and fill_array builder arr el = 
       let array_assign idx arr_e = ignore(L.build_store (expr builder arr_e) 
-        (L.build_gep arr [| (L.const_int i32_t (idx+1)) |] "array_assign"
+      (L.build_gep arr [| (L.const_int i32_t (idx)) |] "array_assign"
         builder) builder) in 
       List.iteri array_assign el;
 

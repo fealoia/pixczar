@@ -35,7 +35,7 @@ void display_square(int x, int y, int length) {
     glEnd();
 }
 
-int render(frame *frames[], int fps, int width, int height) {
+int render(int numFrames, frame *frames[], int fps, int width, int height) {
     glfwInit();
     
     glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
@@ -66,18 +66,20 @@ int render(frame *frames[], int fps, int width, int height) {
     double spf = 1.0/fps;
     double lastDrawTime = glfwGetTime();
     
-    while( !glfwWindowShouldClose( window ) ) {
-        if (glfwGetTime() - lastDrawTime >= spf) {
-            glClearColor( 1.0f, 1.0f, 1.0f, 1.0f );
-            glClear( GL_COLOR_BUFFER_BIT );
-            display_square(frames[1]->placed->x, frames[1]->placed->x,200);
-            glfwSwapBuffers( window );
-            
-            lastDrawTime = glfwGetTime();
-        }
+    for(int i=1; i<numFrames; i++) {
+        if(glfwWindowShouldClose(window)) break;
+        
+        glClearColor( 1.0f, 1.0f, 1.0f, 1.0f );
+        glClear( GL_COLOR_BUFFER_BIT );
+        display_square(frames[i]->placed->x, frames[i]->placed->x, 200);
+        glfwSwapBuffers( window );
+        
+        lastDrawTime = glfwGetTime();
         glfwPollEvents();
-   }
-
-   glfwTerminate();
-   return 0;
+        
+        while(glfwGetTime() - lastDrawTime < spf);
+    }
+    
+    glfwTerminate();
+    return 0;
 }

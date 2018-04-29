@@ -184,7 +184,7 @@ let check (globals, functions) =
             let (map, et, e') = check_expr e map in
             let err = "illegal argument found " ^ string_of_typ et ^
                       " expected " ^ string_of_typ ft ^ " in " ^ string_of_expr e
-            in (map, check_assign ft et err, e')
+            in (map, check_assign et ft err, e')
           in
           let args' = List.map2 check_call fd.formals args
           in (map, fd.typ, SCall(fname, args')))
@@ -318,8 +318,8 @@ let check (globals, functions) =
          let s = snd b
          in let _ = (if t=Void then raise(Failure("Void type declaration")))
          in (if StringMap.mem s map then raise ( Failure ("Duplicate variable declaration " ^ s))
-             else let new_symbols = StringMap.add s t map
-                  in let (map, t2, _) = check_expr e new_symbols
+             else let (map, t2, _) = check_expr e map in
+                  let new_symbols = StringMap.add s t2 map
                      in let err = "LHS type of " ^ string_of_typ t ^ " not the same as " ^
                        "RHS type of " ^ string_of_typ t2 in
                      let _ = if t2 <> Void then check_assign t t2 err else t in
