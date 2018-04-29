@@ -22,14 +22,14 @@ let translate (globals, functions) =
   and i1_t        = L.i1_type     context in
 
   let pix_struct   = L.named_struct_type context "pix" in
-    let () = L.struct_set_body pix_struct [||] false in
+  let () = L.struct_set_body pix_struct [|i32_t;|] false in
   let pix_t = L.pointer_type pix_struct in
   let placement_struct   = L.named_struct_type context "placement" in
     let () = L.struct_set_body placement_struct
-       [|L.pointer_type (pix_t); i32_t; i32_t; i32_t; i32_t; |] false in
-  let placement_t = L.pointer_type pix_struct in
+      [| pix_t; i32_t; i32_t; i32_t; i32_t;|] false in
+  let placement_t = L.pointer_type placement_struct in
   let frame_struct   = L.named_struct_type context "frame" in
-    let () = L.struct_set_body frame_struct [|i32_t; i32_t;|] false in
+    let () = L.struct_set_body frame_struct [|placement_t;|] false in
   let frame_t = L.pointer_type frame_struct in
 
   let the_module = L.create_module context "PixCzar" in
@@ -54,7 +54,8 @@ let translate (globals, functions) =
   let builtin_printf_func : L.llvalue =
      L.declare_function "printf" builtin_printf_t the_module in
   let builtin_render_t : L.lltype =
-      L.var_arg_function_type i32_t [| L.pointer_type frame_t; i32_t |] in
+      L.var_arg_function_type i32_t [| L.pointer_type frame_t; i32_t; i32_t;
+      i32_t; |] in
   let builtin_render_func : L.llvalue =
      L.declare_function "render" builtin_render_t the_module in
       
@@ -84,13 +85,15 @@ let translate (globals, functions) =
       | _ -> raise(Failure("No default value for this type")) in
 
     let typ_malloc typ_ptr typ_struct el_arr builder = 
-       let struct_malloc = L.build_malloc (L.element_type typ_ptr) "malloc" builder in
-       let alloca = L.build_alloca typ_ptr "typ" builder in
-       let struct_val = L.const_named_struct typ_struct el_arr in
-        let _ = ignore(L.build_store struct_val struct_malloc builder) in
-        let _ = ignore(L.build_store struct_malloc alloca builder) in
-        L.build_pointercast struct_malloc typ_ptr "cast" builder in
-
+       let struct_malloc = L.build_malloc typ_struct "malloc" builder in
+       let struct_malloc = L.build_pointercast struct_malloc typ_ptr "cast"
+         builder in
+       let store_el idx el = 
+           let e_p = L.build_struct_gep struct_malloc idx "struct_build" builder
+           in ignore(L.build_store el e_p builder)
+       in let () = List.iteri store_el el_arr 
+       in struct_malloc in
+    
     let rec expr builder ((m, t, e) : sexpr) = match e with
         SLiteral i -> L.const_int i32_t i
       | SStringLit st -> L.build_global_stringptr st "tmp" builder
@@ -99,7 +102,9 @@ let translate (globals, functions) =
       | SNoexpr -> L.const_int i32_t 0
       | SId s -> id_gen builder s true
       | SAssign(e1, e2) -> assign_gen builder e1 e2
-      | SCall (id, e) -> (match id with
+      | SCall (id, e) ->
+         let build_expr_list expr_list e = (expr builder e) :: expr_list in
+         (match id with
            "printf" ->  
              L.build_call builtin_printf_func [| float_format_str builder ; (expr
                 builder (List.hd e)) |] "printf" builder
@@ -112,14 +117,14 @@ let translate (globals, functions) =
          | "printb"  -> 
              L.build_call builtin_printf_func [| bool_format_str builder ; (expr builder
                 (List.hd e)) |] "printf" builder
-         | "render"  -> let frames = List.hd e in let fps = List.nth e 1 in 
-         L.build_call builtin_render_func [| expr builder frames; expr builder
-         fps  |] "render" builder
+         | "render"  -> let (_,A.Array(_,frame_array_size),_) = List.hd e in
+           L.build_call builtin_render_func (Array.of_list
+            (List.rev (List.fold_left build_expr_list (*[L.const_int i32_t
+            frame_array_size]*) [] e))) "render" builder
          | _ -> if StringMap.mem id function_decls then
                   let (the_function, fdecl) = StringMap.find id function_decls in
-                  let build_expr_list expr_list e = (expr builder e) :: expr_list in
-                  let arg_list = Array.of_list(List.rev(
-                      List.fold_left build_expr_list [] e)) in
+                  let arg_list = Array.of_list
+                    (List.rev(List.fold_left build_expr_list [] e)) in
                   if fdecl.styp = Void then
                     L.build_call the_function arg_list "" builder else
                     L.build_call the_function arg_list id builder
@@ -130,9 +135,9 @@ let translate (globals, functions) =
       | SNullLit -> L.const_null i32_t
       | SNew(t, el) -> let rec to_ll ll_list el_list = (match el_list with
           hd :: tl -> to_ll ((expr builder hd) :: ll_list) tl
-        | _ -> List.rev(ll_list)) in let arr = Array.of_list(to_ll [] el) in
+        | _ -> List.rev(ll_list)) in let arr = to_ll [] el in
           (match t with (*ToDo: garbage collection*)
-          Pix -> typ_malloc pix_t pix_struct arr builder
+          Pix -> typ_malloc pix_t pix_struct [L.const_int i32_t 50] builder
         | Placement -> typ_malloc placement_t placement_struct arr builder
         | Frame -> typ_malloc frame_t frame_struct arr builder
         | _ -> to_imp "Additional types")

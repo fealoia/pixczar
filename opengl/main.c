@@ -6,24 +6,41 @@
 
 const GLint WIDTH = 800, HEIGHT = 600;
 
+struct pix {
+    int temp;
+} typedef pix;
+
+struct placement {
+    pix *ref;
+    int x;
+    int y;
+    int rank;
+    int group;
+} typedef placement;
+
 struct frame {
+    placement *placed;
     int width;
     int height;
 } typedef frame;
 
-int render(frame *frames[], int fps) {
+void display_square(int x, int y, int length) {
+    glColor3f(1.0f,0.0f,0.0f);
+
+    glBegin(GL_POLYGON);
+    glVertex2f(x, y);
+    glVertex2f(x, y+length);
+    glVertex2f(x+length, y+length);
+    glVertex2f(x+length, y);
+    glEnd();
+}
+
+int render(frame *frames[], int fps, int width, int height) {
     glfwInit();
     
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
     glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
     
-    char buff[10];
-    sprintf(buff, "%d",frames[1]->width);
-    
-    GLFWwindow *window = glfwCreateWindow(WIDTH, HEIGHT, buff, NULL, NULL);
+    GLFWwindow *window = glfwCreateWindow(width, height, "PixCzar", NULL, NULL);
     
     int screenWidth, screenHeight;
     glfwGetFramebufferSize( window, &screenWidth, &screenHeight);
@@ -39,19 +56,28 @@ int render(frame *frames[], int fps) {
     
     if( GLEW_OK != glewInit() ) {
         printf("Failed to initialize GLEW\n");
+        glfwTerminate();
         return -1;
     }
     
     glViewport( 0, 0, screenWidth, screenHeight );
+    glOrtho(0.0f,width, 0.0f, height, -1.0f, 1.0f);
+
+    double spf = 1.0/fps;
+    double lastDrawTime = glfwGetTime();
     
     while( !glfwWindowShouldClose( window ) ) {
+        if (glfwGetTime() - lastDrawTime >= spf) {
+            glClearColor( 1.0f, 1.0f, 1.0f, 1.0f );
+            glClear( GL_COLOR_BUFFER_BIT );
+            display_square(frames[1]->placed->x, frames[1]->placed->x,200);
+            glfwSwapBuffers( window );
+            
+            lastDrawTime = glfwGetTime();
+        }
         glfwPollEvents();
-        glClearColor( 0.2f, 0.3f, 0.3, 1.0f );
-        glClear( GL_COLOR_BUFFER_BIT );
-        glfwSwapBuffers( window );
-    }
-    
-    glfwTerminate();
-    
-    return 0;
+   }
+
+   glfwTerminate();
+   return 0;
 }

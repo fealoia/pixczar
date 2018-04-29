@@ -54,7 +54,7 @@ let check (globals, functions) =
       typ = Void; fname = name;
       formals = formal_vars; locals = []; body = [] } map
     in List.fold_left add_bind StringMap.empty [("render", Void,
-    [(Array(Frame,-1), "frames"); (Int, "fps") ])]
+    [(Array(Frame,-1), "frames"); (Int, "fps"); (Int, "height"); (Int, "width") ])]
   in
 
   (* Add function name to symbol table *)
@@ -202,11 +202,11 @@ let check (globals, functions) =
                 in (map, Pix, SNew(Pix, check_pix args))
             | Placement -> let check_placement args =
                   if List.length args != 5 then raise (Failure (len_err 5)) else
-                    List.map2 check_arg [Pix; Int; Int; Int; Int] args
+                      List.map2 check_arg [Pix; Int; Int; Int; Int] args
                 in (map, Placement, SNew(Placement, check_placement args))
             | Frame     -> let check_frame args =
-                  if List.length args != 2 then raise (Failure (len_err 2)) else
-                    List.map2 check_arg [Int; Int] args
+                  if List.length args != 1 then raise (Failure (len_err 1)) else
+                    List.map2 check_arg [Placement] args
                 in (map, Frame, SNew(Frame, check_frame args))
             | _           -> raise (Failure ("illegal object name " ^
                         string_of_typ t))
