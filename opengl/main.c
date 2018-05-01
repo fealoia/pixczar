@@ -4,13 +4,11 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
-const GLint WIDTH = 800, HEIGHT = 600;
-
 struct pix {
     int type;
     int width;
     int height;
-    int rgb[];
+    int *rgb;
 } typedef pix;
 
 struct placement {
@@ -30,20 +28,38 @@ struct frame {
     struct placement_node *head;
 } typedef frame;
 
-void display_square(int x, int y, int length) {
-    glColor3f(1.0f,0.0f,0.0f);
+void color(int rgb[]) {
+    float r = (1/255.0)*rgb[0];
+    float g = (1/255.0)*rgb[1];
+    float b = (1/255.0)*rgb[2];
+    
+    glColor3f(r, g, b);
+}
+
+void display_rect(int x, int y, int width, int height, int rgb[]) {
+    color(rgb);
 
     glBegin(GL_POLYGON);
     glVertex2f(x, y);
-    glVertex2f(x, y+length);
-    glVertex2f(x+length, y+length);
-    glVertex2f(x+length, y);
+    glVertex2f(x, y+height);
+    glVertex2f(x+width, y+height);
+    glVertex2f(x+width, y);
+    glEnd();
+}
+
+void display_triangle(int x, int y, int length, int rgb[]) {
+    color(rgb);
+    
+    glBegin(GL_TRIANGLES);
+    glVertex2f(x, y);
+    glVertex2f(x + length, y);
+    glVertex2f(x + length/2, y + length/2);
     glEnd();
 }
 
 int render(int numFrames, frame *frames[], int fps, int width, int height) {
     glfwInit();
-    
+
     glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
     
     GLFWwindow *window = glfwCreateWindow(width, height, "PixCzar", NULL, NULL);
@@ -72,7 +88,9 @@ int render(int numFrames, frame *frames[], int fps, int width, int height) {
     double spf = 1.0/fps;
     double lastDrawTime = glfwGetTime();
 
-    for(int i=0; i<numFrames; i++) {
+    //ToDo: your shit
+    int i;
+    for(i=0; i<numFrames; i++) {
         if(glfwWindowShouldClose(window)) break;
         
         glClearColor( 1.0f, 1.0f, 1.0f, 1.0f );
@@ -81,8 +99,14 @@ int render(int numFrames, frame *frames[], int fps, int width, int height) {
         placement_node *node = frames[i]->head;
        // return (int)node->placed->ref->rgb[0];
         while(node->placed) {
-            if(node->placed->ref->type == 0)
-                display_square(node->placed->x, node->placed->y, 200);
+            if(node->placed->ref->type == 1) {
+                display_rect(node->placed->x, node->placed->y, node->placed->ref->width,
+                             node->placed->ref->height, node->placed->ref->rgb);
+            } else if(node->placed->ref->type == 2) {
+                display_triangle(node->placed->x, node->placed->y, node->placed->ref->height,
+                                 node->placed->ref->rgb);
+            }
+            
             node = node->next;
         }
         glfwSwapBuffers( window );

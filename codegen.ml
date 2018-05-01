@@ -148,9 +148,8 @@ let translate (globals, functions) =
           hd :: tl -> to_ll ((expr builder hd) :: ll_list) tl
         | _ -> List.rev(ll_list)) in let arr = to_ll [] el in
           (match t with (*ToDo: garbage collection*)
-          Pix -> typ_malloc pix_t pix_struct [L.const_int i32_t 0; L.const_int
-          i32_t 0; L.const_int i32_t 0; L.const_pointer_null (L.pointer_type
-          i32_t)] builder
+          Pix -> let zero = L.const_int i32_t 0 in typ_malloc pix_t pix_struct 
+            [zero;zero;zero;L.const_pointer_null (L.pointer_type i32_t)] builder
         | Placement -> typ_malloc placement_t placement_struct arr builder
         | Frame -> let node = typ_malloc placement_node_t placement_node 
            [L.const_pointer_null placement_node_t; L.const_pointer_null
@@ -234,7 +233,6 @@ let translate (globals, functions) =
       let _ = (if int_index < 0 || int_index >= int_size
             then raise(Failure("Illegal index"))) in
       
-     (* let index = L.build_add index (L.const_int i32_t 1) "add" builder in*)
       let arr_val = L.build_gep arr [| index |] "arr_access" builder in
       if is_assign then arr_val
       else L.build_load arr_val "arr_access_val" builder
@@ -416,11 +414,15 @@ let translate (globals, functions) =
                [prev_node; placement] builder in
              let _ = ignore(L.build_store node pnode_ptr builder) in
              builder 
-         | "makeRectangle" -> let [width;height;(_,t,_)] = el in
-             let size = (match t with Array(_,size) -> size | _ -> 0) in
-             let pix = expr builder e in
-             let _ = fill_struct pix 
+         | "makeRectangle" -> let pix = expr builder e in
+             let _ = fill_struct pix
              (List.rev(List.fold_left build_expr_list [L.const_int i32_t 1]
+               el)) builder
+             in builder
+         | "makeTriangle" -> let pix = expr builder e in
+             let _ = fill_struct pix
+             (List.rev(List.fold_left build_expr_list [L.const_int i32_t 0;
+             L.const_int i32_t 2;]
                el)) builder
              in builder
          | _ -> let _ = to_imp "object call: " ^ name in builder
