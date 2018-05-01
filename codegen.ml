@@ -24,12 +24,18 @@ let translate (globals, functions) =
   let pix_struct   = L.named_struct_type context "pix" in
   let () = L.struct_set_body pix_struct [|i32_t;|] false in
   let pix_t = L.pointer_type pix_struct in
+
   let placement_struct   = L.named_struct_type context "placement" in
     let () = L.struct_set_body placement_struct
       [| pix_t; i32_t; i32_t; i32_t; i32_t;|] false in
   let placement_t = L.pointer_type placement_struct in
+  let placement_node = L.named_struct_type context "placement_node" in
+  let placement_node_t = L.pointer_type placement_node in
+    let () = L.struct_set_body placement_node
+      [| placement_node_t; placement_t |] false in
+
   let frame_struct   = L.named_struct_type context "frame" in
-    let () = L.struct_set_body frame_struct [|placement_t;|] false in
+    let () = L.struct_set_body frame_struct [|placement_node_t;|] false in
   let frame_t = L.pointer_type frame_struct in
 
   let the_module = L.create_module context "PixCzar" in
@@ -91,7 +97,7 @@ let translate (globals, functions) =
        let store_el idx el = 
            let e_p = L.build_struct_gep struct_malloc idx "struct_build" builder
            in ignore(L.build_store el e_p builder)
-       in let () = List.iteri store_el el_arr 
+       in let () = List.iteri store_el el_arr
        in struct_malloc in
     
     let rec expr builder ((m, t, e) : sexpr) = match e with
@@ -141,7 +147,10 @@ let translate (globals, functions) =
           (match t with (*ToDo: garbage collection*)
           Pix -> typ_malloc pix_t pix_struct [L.const_int i32_t 50] builder
         | Placement -> typ_malloc placement_t placement_struct arr builder
-        | Frame -> typ_malloc frame_t frame_struct arr builder
+        | Frame -> let node = typ_malloc placement_node_t placement_node 
+           [L.const_pointer_null placement_node_t; L.const_pointer_null
+             placement_t] builder in 
+           typ_malloc frame_t frame_struct [node] builder
         | _ -> to_imp "Additional types")
       | SNewArray(t, size) -> let lt = ltype_of_typ t 
         in create_array_gen builder lt size
@@ -160,7 +169,7 @@ let translate (globals, functions) =
                 assign_gen builder e (m, t, SBinop(e, A.Sub, (m, t, SLiteral(1))))
               | _ -> L.build_sub e' (L.const_int i32_t 1) "sub" builder)
       )
-      | _ -> to_imp "statement"
+      | _ -> to_imp "expression"
 
     and id_gen builder id deref =
         if Hash.mem local_values id then
@@ -392,6 +401,17 @@ let translate (globals, functions) =
       loop_list))) in builder
       | SContinue -> let () = add_terminal builder (L.build_br (fst (List.hd
       loop_list))) in builder
+      | SObjCall(e, name, el) -> (match name with
+          "addPlacement" -> let frame = expr builder e in
+             let placement = expr builder (List.hd el) in
+             let pnode_ptr = L.build_struct_gep frame 0 "add_plcmt" builder in
+             let prev_node = L.build_load pnode_ptr "node" builder in
+             let node = typ_malloc placement_node_t placement_node
+               [prev_node; placement] builder in
+             let _ = ignore(L.build_store node pnode_ptr builder) in
+             builder 
+         | _ -> let _ = to_imp "object call: " ^ name in builder
+      )
       | s -> to_imp (string_of_sstmt (map, ss))
 
     and if_gen builder predicate then_stmt elseif_stmts else_stmt loop_list =

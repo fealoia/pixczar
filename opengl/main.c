@@ -18,10 +18,13 @@ struct placement {
     int group;
 } typedef placement;
 
+struct placement_node {
+    struct placement_node *next;
+    struct placement *placed;
+} typedef placement_node;
+
 struct frame {
-    placement *placed;
-    int width;
-    int height;
+    struct placement_node *head;
 } typedef frame;
 
 void display_square(int x, int y, int length) {
@@ -65,13 +68,19 @@ int render(int numFrames, frame *frames[], int fps, int width, int height) {
 
     double spf = 1.0/fps;
     double lastDrawTime = glfwGetTime();
-    
+//    return numFrames;
     for(int i=1; i<numFrames; i++) {
         if(glfwWindowShouldClose(window)) break;
         
         glClearColor( 1.0f, 1.0f, 1.0f, 1.0f );
         glClear( GL_COLOR_BUFFER_BIT );
-        display_square(frames[i]->placed->x, frames[i]->placed->x, 200);
+        
+        placement_node *node = frames[i]->head;
+
+        while(node->placed) {
+            display_square(node->placed->x, node->placed->y, 200);
+            node = node->next;
+        }
         glfwSwapBuffers( window );
         
         lastDrawTime = glfwGetTime();

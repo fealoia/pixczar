@@ -51,9 +51,9 @@ let check (globals, functions) =
   (* Collect function declarations for built-in functions: no bodies *)
   let built_in_decls =
     let add_bind map (name, typ, formal_vars) = StringMap.add name {
-      typ = Void; fname = name;
+      typ = typ; fname = name;
       formals = formal_vars; locals = []; body = [] } map
-    in List.fold_left add_bind StringMap.empty [("render", Void,
+    in List.fold_left add_bind StringMap.empty [("render", Int,
     [(Array(Frame,-1), "frames"); (Int, "fps"); (Int, "height"); (Int, "width") ])]
   in
 
@@ -205,8 +205,8 @@ let check (globals, functions) =
                       List.map2 check_arg [Pix; Int; Int; Int; Int] args
                 in (map, Placement, SNew(Placement, check_placement args))
             | Frame     -> let check_frame args =
-                  if List.length args != 1 then raise (Failure (len_err 1)) else
-                    List.map2 check_arg [Placement] args
+                  if List.length args != 0 then raise (Failure (len_err 0)) else
+                    List.map2 check_arg [] args
                 in (map, Frame, SNew(Frame, check_frame args))
             | _           -> raise (Failure ("illegal object name " ^
                         string_of_typ t))
