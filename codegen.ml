@@ -22,7 +22,7 @@ let translate (globals, functions) =
   and i1_t        = L.i1_type     context in
 
   let pix_struct   = L.named_struct_type context "pix" in
-  let () = L.struct_set_body pix_struct [|i32_t;|] false in
+  let () = L.struct_set_body pix_struct [|i32_t; i32_t;|] false in
   let pix_t = L.pointer_type pix_struct in
 
   let placement_struct   = L.named_struct_type context "placement" in
@@ -145,7 +145,7 @@ let translate (globals, functions) =
           hd :: tl -> to_ll ((expr builder hd) :: ll_list) tl
         | _ -> List.rev(ll_list)) in let arr = to_ll [] el in
           (match t with (*ToDo: garbage collection*)
-          Pix -> typ_malloc pix_t pix_struct [L.const_int i32_t 50] builder
+          Pix -> typ_malloc pix_t pix_struct [L.const_int i32_t 0; L.const_int i32_t 50] builder
         | Placement -> typ_malloc placement_t placement_struct arr builder
         | Frame -> let node = typ_malloc placement_node_t placement_node 
            [L.const_pointer_null placement_node_t; L.const_pointer_null

@@ -7,6 +7,7 @@
 const GLint WIDTH = 800, HEIGHT = 600;
 
 struct pix {
+    int type;
     int temp;
 } typedef pix;
 
@@ -68,7 +69,7 @@ int render(int numFrames, frame *frames[], int fps, int width, int height) {
 
     double spf = 1.0/fps;
     double lastDrawTime = glfwGetTime();
-//    return numFrames;
+
     for(int i=1; i<numFrames; i++) {
         if(glfwWindowShouldClose(window)) break;
         
@@ -78,7 +79,8 @@ int render(int numFrames, frame *frames[], int fps, int width, int height) {
         placement_node *node = frames[i]->head;
 
         while(node->placed) {
-            display_square(node->placed->x, node->placed->y, 200);
+            if(node->placed->ref->type == 0)
+                display_square(node->placed->x, node->placed->y, 200);
             node = node->next;
         }
         glfwSwapBuffers( window );
