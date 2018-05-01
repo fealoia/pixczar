@@ -300,19 +300,19 @@ let check (globals, functions) =
              in List.map2 check_call func_params args
           in let checked_expr = check_expr e map
           in let check_it = match checked_expr with
-              (_, Pix, _) -> if func <> "makeEllipse" then raise (Failure(err)) else
-                  let args' = (map, SObjCall(checked_expr, func, (check_func
-                  [(Int, "width"); (Int, "height"); (Array(Int, 3),
-                  "rgb")] args)))
-                  in let arr_size_check = match args with
-                        x :: y :: CreateArray(z) :: [] -> if List.length z != 3 then raise (Failure(err)) else args'
-                      | _ -> raise (Failure(err))
-                  in arr_size_check
+              (_, Pix, _) -> (match func with
+                  "makeRectangle" -> 
+                     let arr = check_expr (List.nth args 2) map in (match arr with
+                       (_,Array(Int,3),_) ->
+                        (map, SObjCall(checked_expr, func, check_func 
+                        [(Int, "width"); (Int, "height");(Array(Int, 3),"rgb")]
+                        args))
+                      | _ -> raise(Failure("Invalid rgb input")))
+                | _ -> raise(Failure(err)))
             | (_, Frame, _) -> if func <> "addPlacement" then raise (Failure(err)) else
                   (map, SObjCall(checked_expr, func, check_func [(Placement, "place")] args))
             | _ -> raise (Failure(err))
           in check_it
-
       | VarDecs(field) -> let t = fst (fst (get_first field)) in 
          let vardecs (map, vardecs_list) (b, e) = 
          let s = snd b
