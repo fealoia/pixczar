@@ -1,6 +1,7 @@
 #define GLEW_STATIC
 
 #include <stdio.h>
+#include <math.h>
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
@@ -57,6 +58,25 @@ void display_triangle(int x, int y, int length, int rgb[]) {
     glEnd();
 }
 
+void display_ellipse(int x, int y, int width, int height, int rgb[]) {
+    color(rgb);
+    
+    const float Pi2=2*3.141593;
+    int centerX = x + width/2;
+    int centerY = y + height/2;
+    int i;
+    
+    glBegin(GL_TRIANGLE_FAN);
+    glVertex2f(centerX, centerY);
+    for(i=0; i <= 25; i++) {
+        glVertex2f(
+            centerX + ((width/2) * cos(i * Pi2/ 25)),
+            centerY + ((height/2) * sin(i * Pi2/ 25))
+        );
+    }
+    glEnd();
+}
+
 int render(int numFrames, frame *frames[], int fps, int width, int height) {
     glfwInit();
 
@@ -105,6 +125,9 @@ int render(int numFrames, frame *frames[], int fps, int width, int height) {
             } else if(node->placed->ref->type == 2) {
                 display_triangle(node->placed->x, node->placed->y, node->placed->ref->height,
                                  node->placed->ref->rgb);
+            } else if(node->placed->ref->type == 3) {
+                display_ellipse(node->placed->x, node->placed->y, node->placed->ref->width,
+                             node->placed->ref->height, node->placed->ref->rgb);
             }
             
             node = node->next;

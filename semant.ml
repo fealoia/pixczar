@@ -304,7 +304,7 @@ let check (globals, functions) =
               | _ -> raise(Failure("Invalid rgb input")))
           in let check_it = match checked_expr with
               (_, Pix, _) -> (match func with
-                  "makeRectangle" -> let _ = check_rgb (List.rev args) in
+                  "makeRectangle" | "makeEllipse" -> let _ = check_rgb (List.rev args) in
                     (map, SObjCall(checked_expr, func, check_func 
                         [(Int, "width"); (Int, "height");(Array(Int, 3),"rgb")]
                         args))
