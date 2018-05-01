@@ -8,7 +8,9 @@ const GLint WIDTH = 800, HEIGHT = 600;
 
 struct pix {
     int type;
-    int temp;
+    int width;
+    int height;
+    int rgb[];
 } typedef pix;
 
 struct placement {
@@ -70,14 +72,14 @@ int render(int numFrames, frame *frames[], int fps, int width, int height) {
     double spf = 1.0/fps;
     double lastDrawTime = glfwGetTime();
 
-    for(int i=1; i<numFrames; i++) {
+    for(int i=0; i<numFrames; i++) {
         if(glfwWindowShouldClose(window)) break;
         
         glClearColor( 1.0f, 1.0f, 1.0f, 1.0f );
         glClear( GL_COLOR_BUFFER_BIT );
         
         placement_node *node = frames[i]->head;
-
+       // return (int)node->placed->ref->rgb[0];
         while(node->placed) {
             if(node->placed->ref->type == 0)
                 display_square(node->placed->x, node->placed->y, 200);

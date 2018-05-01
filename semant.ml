@@ -290,7 +290,6 @@ let check (globals, functions) =
             | []              -> []
           in (map, SBlock(check_stmt_list sl map))
       | ObjCall(e, func, args) as s ->
-              (* ToDo: other object functions; cannot have null argument*)
           let err = "illegal object function call " ^ string_of_stmt s in
           let check_func func_params args = if List.length args !=
               List.length func_params then raise (Failure(err)) else
@@ -300,14 +299,9 @@ let check (globals, functions) =
              in List.map2 check_call func_params args
           in let checked_expr = check_expr e map
           in let check_it = match checked_expr with
-              (_, Pix, _) -> if func <> "makeEllipse" then raise (Failure(err)) else
-                  let args' = (map, SObjCall(checked_expr, func, (check_func
-                  [(Int, "width"); (Int, "height"); (Array(Int, 3),
-                  "rgb")] args)))
-                  in let arr_size_check = match args with
-                        x :: y :: CreateArray(z) :: [] -> if List.length z != 3 then raise (Failure(err)) else args'
-                      | _ -> raise (Failure(err))
-                  in arr_size_check
+              (_, Pix, _) -> if func <> "makeRectangle" then raise (Failure(err)) else
+                  (map, SObjCall(checked_expr, func, check_func 
+                  [(Int, "width"); (Int, "height");(Array(Int, 3),"rgb")] args))
             | (_, Frame, _) -> if func <> "addPlacement" then raise (Failure(err)) else
                   (map, SObjCall(checked_expr, func, check_func [(Placement, "place")] args))
             | _ -> raise (Failure(err))

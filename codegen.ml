@@ -22,7 +22,7 @@ let translate (globals, functions) =
   and i1_t        = L.i1_type     context in
 
   let pix_struct   = L.named_struct_type context "pix" in
-  let () = L.struct_set_body pix_struct [|i32_t; i32_t;|] false in
+  let () = L.struct_set_body pix_struct [|i32_t; i32_t; i32_t; L.pointer_type i32_t|] false in
   let pix_t = L.pointer_type pix_struct in
 
   let placement_struct   = L.named_struct_type context "placement" in
@@ -90,16 +90,19 @@ let translate (globals, functions) =
       | A.String -> L.build_global_stringptr "" "tmp" builder
       | _ -> raise(Failure("No default value for this type")) in
 
+    let fill_struct structobj el builder =
+       let store_el idx e = 
+           let e_p = L.build_struct_gep structobj idx "struct_build" builder
+           in ignore(L.build_store e e_p builder)
+       in List.iteri store_el el in
+
     let typ_malloc typ_ptr typ_struct el_arr builder = 
        let struct_malloc = L.build_malloc typ_struct "malloc" builder in
        let struct_malloc = L.build_pointercast struct_malloc typ_ptr "cast"
          builder in
-       let store_el idx el = 
-           let e_p = L.build_struct_gep struct_malloc idx "struct_build" builder
-           in ignore(L.build_store el e_p builder)
-       in let () = List.iteri store_el el_arr
+       let () = fill_struct struct_malloc el_arr builder
        in struct_malloc in
-    
+
     let rec expr builder ((m, t, e) : sexpr) = match e with
         SLiteral i -> L.const_int i32_t i
       | SStringLit st -> L.build_global_stringptr st "tmp" builder
@@ -127,7 +130,7 @@ let translate (globals, functions) =
             | (_,A.Array(_,size),_) -> size
             | _ -> raise(Failure("Invalid render input"))) in
              let arg_list = (List.rev (List.fold_left build_expr_list
-               [L.const_int i32_t (size+1)] e)) in
+               [L.const_int i32_t (size)] e)) in
              L.build_call builtin_render_func (Array.of_list arg_list) "render" builder
          | _ -> if StringMap.mem id function_decls then
                   let (the_function, fdecl) = StringMap.find id function_decls in
@@ -145,7 +148,9 @@ let translate (globals, functions) =
           hd :: tl -> to_ll ((expr builder hd) :: ll_list) tl
         | _ -> List.rev(ll_list)) in let arr = to_ll [] el in
           (match t with (*ToDo: garbage collection*)
-          Pix -> typ_malloc pix_t pix_struct [L.const_int i32_t 0; L.const_int i32_t 50] builder
+          Pix -> typ_malloc pix_t pix_struct [L.const_int i32_t 0; L.const_int
+          i32_t 0; L.const_int i32_t 0; L.const_pointer_null (L.pointer_type
+          i32_t)] builder
         | Placement -> typ_malloc placement_t placement_struct arr builder
         | Frame -> let node = typ_malloc placement_node_t placement_node 
            [L.const_pointer_null placement_node_t; L.const_pointer_null
@@ -229,7 +234,7 @@ let translate (globals, functions) =
       let _ = (if int_index < 0 || int_index >= int_size
             then raise(Failure("Illegal index"))) in
       
-      let index = L.build_add index (L.const_int i32_t 1) "add" builder in
+     (* let index = L.build_add index (L.const_int i32_t 1) "add" builder in*)
       let arr_val = L.build_gep arr [| index |] "arr_access" builder in
       if is_assign then arr_val
       else L.build_load arr_val "arr_access_val" builder
@@ -401,7 +406,8 @@ let translate (globals, functions) =
       loop_list))) in builder
       | SContinue -> let () = add_terminal builder (L.build_br (fst (List.hd
       loop_list))) in builder
-      | SObjCall(e, name, el) -> (match name with
+      | SObjCall(e, name, el) -> let build_expr_list expr_list e =
+          (expr builder e) :: expr_list in (match name with
           "addPlacement" -> let frame = expr builder e in
              let placement = expr builder (List.hd el) in
              let pnode_ptr = L.build_struct_gep frame 0 "add_plcmt" builder in
@@ -410,6 +416,13 @@ let translate (globals, functions) =
                [prev_node; placement] builder in
              let _ = ignore(L.build_store node pnode_ptr builder) in
              builder 
+         | "makeRectangle" -> let [width;height;(_,t,_)] = el in
+             let size = (match t with Array(_,size) -> size | _ -> 0) in
+             let pix = expr builder e in
+             let _ = fill_struct pix 
+             (List.rev(List.fold_left build_expr_list [L.const_int i32_t 1]
+               el)) builder
+             in builder
          | _ -> let _ = to_imp "object call: " ^ name in builder
       )
       | s -> to_imp (string_of_sstmt (map, ss))
