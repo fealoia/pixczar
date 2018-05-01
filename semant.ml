@@ -299,16 +299,21 @@ let check (globals, functions) =
                 in (map, check_assign ft et err, e')
              in List.map2 check_call func_params args
           in let checked_expr = check_expr e map
+          in let check_rgb arr = let rgb = check_expr
+            (List.hd arr) map in (match rgb with
+                (_,Array(Int,3),_) -> rgb
+              | _ -> raise(Failure("Invalid rgb input")))
           in let check_it = match checked_expr with
               (_, Pix, _) -> (match func with
-                  "makeRectangle" -> 
-                     let arr = check_expr (List.nth args 2) map in (match arr with
-                       (_,Array(Int,3),_) ->
-                        (map, SObjCall(checked_expr, func, check_func 
+                  "makeRectangle" -> let _ = check_rgb (List.rev args) in
+                    (map, SObjCall(checked_expr, func, check_func 
                         [(Int, "width"); (Int, "height");(Array(Int, 3),"rgb")]
                         args))
-                      | _ -> raise(Failure("Invalid rgb input")))
-                | _ -> raise(Failure(err)))
+                 | "makeTriangle" -> let _ = check_rgb (List.rev args) in
+                    (map, SObjCall(checked_expr, func, check_func 
+                        [(Int, "length");(Array(Int, 3),"rgb")]
+                        args))
+                 | _ -> raise(Failure("ObjCall not yet implemented")))
             | (_, Frame, _) -> if func <> "addPlacement" then raise (Failure(err)) else
                   (map, SObjCall(checked_expr, func, check_func [(Placement, "place")] args))
             | _ -> raise (Failure(err))

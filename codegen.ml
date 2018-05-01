@@ -421,6 +421,12 @@ let translate (globals, functions) =
              (List.rev(List.fold_left build_expr_list [L.const_int i32_t 1]
                el)) builder
              in builder
+         | "makeTriangle" -> let pix = expr builder e in
+             let _ = fill_struct pix
+             (List.rev(List.fold_left build_expr_list [L.const_int i32_t 0;
+             L.const_int i32_t 2;]
+               el)) builder
+             in builder
          | _ -> let _ = to_imp "object call: " ^ name in builder
       )
       | s -> to_imp (string_of_sstmt (map, ss))
