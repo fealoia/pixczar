@@ -4,6 +4,9 @@ Frank Aloia - fea2113@columbia.edu
 Gary Chen - gc2676@columbia.edu
 Bryan Li - bl2557@columbia.edu
 Matias Lirman - ml3707@columbia.edu
+
+TODO: List all dependencies
+Including: http://www.lonesock.net/soil.html
 ________________________________________________________________
 
 How to Compile/Execute: "./testall.sh"

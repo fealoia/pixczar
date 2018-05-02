@@ -10,7 +10,7 @@ green=`tput setaf 2`
 reset=`tput sgr0`
 
 CC="clang"
-LIBS="-framework GLUT -framework OpenGL -lGLEW -lglfw"
+LIBS="-framework GLUT -framework OpenGL -framework CoreFoundation -lsoil -lGLEW -lglfw"
 
 ./make.sh
 

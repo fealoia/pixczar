@@ -1,6 +1,6 @@
 CC = gcc
 CFLAGS = -c -g -Wall -Wextra
-LDFLAGS = -framework GLUT -framework OpenGL -lGLEW -lglfw
+LDFLAGS = -framework GLUT -framework OpenGL -framework CoreFoundation -lsoil -lGLEW -lglfw
 
 all: main.o
 

@@ -4,11 +4,11 @@
 #include <math.h>
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
+#include "soil.h"
 
 struct pix {
     int type;
-    int *text;
-    int fontsize;
+    char *filename;
     int width;
     int height;
     int *rgb;
@@ -79,6 +79,38 @@ void display_ellipse(int x, int y, int width, int height, int rgb[]) {
     glEnd();
 }
 
+void display_image(int x, int y, int width, int height, char *filename) {
+    glEnable(GL_TEXTURE_2D);
+    int img_width, img_height;
+    
+    unsigned char* image =
+    SOIL_load_image(filename, &img_width, &img_height, 0, SOIL_LOAD_RGB);
+
+    if(image == NULL) {
+        printf("Invalid image: %s\n", filename);
+        return;
+    }
+
+    GLuint gltext;
+    glGenTextures(1,&gltext);
+    glBindTexture(GL_TEXTURE_2D, gltext);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, img_width, img_height, 0, GL_RGB,
+                 GL_UNSIGNED_BYTE, image);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    
+    glBegin(GL_QUADS);
+    glTexCoord2i(0, 0); glVertex2i(x, y+height);
+    glTexCoord2i(0, 1); glVertex2i(x, y);
+    glTexCoord2i(1, 1); glVertex2i(x+width, y);
+    glTexCoord2i(1, 0); glVertex2i(x+width, y+height);
+
+    glEnd();
+    glDisable(GL_TEXTURE_2D);
+
+    SOIL_free_image_data(image);
+}
+
 int render(int numFrames, frame *frames[], int fps, int width, int height) {
     glfwInit();
 
@@ -101,7 +133,6 @@ int render(int numFrames, frame *frames[], int fps, int width, int height) {
     if( GLEW_OK != glewInit() ) {
         printf("Failed to initialize GLEW\n");
         glfwTerminate();
-        return -1;
     }
     
     glViewport( 0, 0, screenWidth, screenHeight );
@@ -129,6 +160,9 @@ int render(int numFrames, frame *frames[], int fps, int width, int height) {
             } else if(node->placed->ref->type == 3) {
                 display_ellipse(node->placed->x, node->placed->y, node->placed->ref->width,
                              node->placed->ref->height, node->placed->ref->rgb);
+            } else if(node->placed->ref->type == 4) {
+                display_image(node->placed->x, node->placed->y, node->placed->ref->width,
+                              node->placed->ref->height, node->placed->ref->filename);
             }
             
             node = node->next;

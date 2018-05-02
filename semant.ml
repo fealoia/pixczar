@@ -311,9 +311,9 @@ let check (globals, functions) =
                  | "makeTriangle" -> let _ = check_rgb (List.rev args) in
                     (map, SObjCall(checked_expr, func, check_func 
                         [(Int, "length");(Array(Int, 3),"rgb")] args))
-                 | "makeTextBox" ->
+                 | "uploadImage" ->
                     (map, SObjCall(checked_expr, func, check_func 
-                        [(String, "text");(Int, "fontSize")]
+                      [(String, "path");(Int, "width");(Int,"height")]
                         args))
                  | _ -> raise(Failure("ObjCall not yet implemented")))
             | (_, Frame, _) -> if func <> "addPlacement" then raise (Failure(err)) else
