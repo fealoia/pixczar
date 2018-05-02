@@ -1,11 +1,14 @@
 #define GLEW_STATIC
 
 #include <stdio.h>
+#include <math.h>
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
 struct pix {
     int type;
+    int *text;
+    int fontsize;
     int width;
     int height;
     int *rgb;
@@ -57,6 +60,25 @@ void display_triangle(int x, int y, int length, int rgb[]) {
     glEnd();
 }
 
+void display_ellipse(int x, int y, int width, int height, int rgb[]) {
+    color(rgb);
+    
+    const float Pi2=2*3.141593;
+    int centerX = x + width/2;
+    int centerY = y + height/2;
+    int i;
+    
+    glBegin(GL_TRIANGLE_FAN);
+    glVertex2f(centerX, centerY);
+    for(i=0; i <= 25; i++) {
+        glVertex2f(
+            centerX + ((width/2) * cos(i * Pi2/ 25)),
+            centerY + ((height/2) * sin(i * Pi2/ 25))
+        );
+    }
+    glEnd();
+}
+
 int render(int numFrames, frame *frames[], int fps, int width, int height) {
     glfwInit();
 
@@ -88,7 +110,7 @@ int render(int numFrames, frame *frames[], int fps, int width, int height) {
     double spf = 1.0/fps;
     double lastDrawTime = glfwGetTime();
 
-    //ToDo: your shit
+    //ToDo: your shit new
     int i;
     for(i=0; i<numFrames; i++) {
         if(glfwWindowShouldClose(window)) break;
@@ -97,7 +119,6 @@ int render(int numFrames, frame *frames[], int fps, int width, int height) {
         glClear( GL_COLOR_BUFFER_BIT );
         
         placement_node *node = frames[i]->head;
-       // return (int)node->placed->ref->rgb[0];
         while(node->placed) {
             if(node->placed->ref->type == 1) {
                 display_rect(node->placed->x, node->placed->y, node->placed->ref->width,
@@ -105,6 +126,9 @@ int render(int numFrames, frame *frames[], int fps, int width, int height) {
             } else if(node->placed->ref->type == 2) {
                 display_triangle(node->placed->x, node->placed->y, node->placed->ref->height,
                                  node->placed->ref->rgb);
+            } else if(node->placed->ref->type == 3) {
+                display_ellipse(node->placed->x, node->placed->y, node->placed->ref->width,
+                             node->placed->ref->height, node->placed->ref->rgb);
             }
             
             node = node->next;
