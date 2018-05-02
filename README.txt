@@ -23,6 +23,15 @@ please change the path to the users appropriate llvm directory ***
 that these compiling tools are already downloaded on user's computer ***
 ________________________________________________________________
 
+include.sh is the implementation of #include used, as suggested by one of Richard's Piazza posts.
+How to run:
+command: source include.sh && generate_includes input.pxr
+returns: input_included.pxr
+
+With this new .pxr file, you can proceed with compilation. Note that this means that
+the pixczar compiler will never see the #include.
+________________________________________________________________
+
 TESTS FOR DELIVERABLE 4/18:
 
 (New features as of previous deliverable)
