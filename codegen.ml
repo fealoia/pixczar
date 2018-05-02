@@ -435,6 +435,9 @@ let translate (globals, functions) =
          | "uploadImage" -> let pix = expr builder e in
              let _ = fill_struct pix (List.rev(List.fold_left
              build_expr_list [L.const_int i32_t 4] el)) builder in builder
+         | "clear"-> let pix = expr builder e in
+             let _ = fill_struct pix (List.rev(List.fold_left
+             build_expr_list [L.const_int i32_t 0] el)) builder in builder
          | _ -> let _ = to_imp "object call: " ^ name in builder
       )
       | s -> to_imp (string_of_sstmt (map, ss))

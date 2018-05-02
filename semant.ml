@@ -315,6 +315,8 @@ let check (globals, functions) =
                     (map, SObjCall(checked_expr, func, check_func 
                       [(String, "path");(Int, "width");(Int,"height")]
                         args))
+                 | "clear" -> (map, SObjCall(checked_expr, func, check_func []
+                   args))
                  | _ -> raise(Failure("ObjCall not yet implemented")))
             | (_, Frame, _) -> if func <> "addPlacement" then raise (Failure(err)) else
                   (map, SObjCall(checked_expr, func, check_func [(Placement, "place")] args))
