@@ -7,6 +7,8 @@
 
 struct pix {
     int type;
+    int *text;
+    int fontsize;
     int width;
     int height;
     int *rgb;
@@ -108,7 +110,7 @@ int render(int numFrames, frame *frames[], int fps, int width, int height) {
     double spf = 1.0/fps;
     double lastDrawTime = glfwGetTime();
 
-    //ToDo: your shit
+    //ToDo: your shit new
     int i;
     for(i=0; i<numFrames; i++) {
         if(glfwWindowShouldClose(window)) break;
@@ -117,7 +119,6 @@ int render(int numFrames, frame *frames[], int fps, int width, int height) {
         glClear( GL_COLOR_BUFFER_BIT );
         
         placement_node *node = frames[i]->head;
-       // return (int)node->placed->ref->rgb[0];
         while(node->placed) {
             if(node->placed->ref->type == 1) {
                 display_rect(node->placed->x, node->placed->y, node->placed->ref->width,

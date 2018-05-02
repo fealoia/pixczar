@@ -22,7 +22,8 @@ let translate (globals, functions) =
   and i1_t        = L.i1_type     context in
 
   let pix_struct   = L.named_struct_type context "pix" in
-  let () = L.struct_set_body pix_struct [|i32_t; i32_t; i32_t; L.pointer_type i32_t|] false in
+  let () = L.struct_set_body pix_struct [|i32_t; str_t; i32_t; i32_t; i32_t; L.pointer_type
+  i32_t|] false in
   let pix_t = L.pointer_type pix_struct in
 
   let placement_struct   = L.named_struct_type context "placement" in
@@ -149,7 +150,8 @@ let translate (globals, functions) =
         | _ -> List.rev(ll_list)) in let arr = to_ll [] el in
           (match t with (*ToDo: garbage collection*)
           Pix -> let zero = L.const_int i32_t 0 in typ_malloc pix_t pix_struct 
-            [zero;zero;zero;L.const_pointer_null (L.pointer_type i32_t)] builder
+           [zero;L.const_pointer_null str_t;zero;zero;zero;
+           L.const_pointer_null (L.pointer_type i32_t)] builder
         | Placement -> typ_malloc placement_t placement_struct arr builder
         | Frame -> let node = typ_malloc placement_node_t placement_node 
            [L.const_pointer_null placement_node_t; L.const_pointer_null
@@ -416,20 +418,24 @@ let translate (globals, functions) =
              builder 
          | "makeRectangle" -> let pix = expr builder e in
              let _ = fill_struct pix
-             (List.rev(List.fold_left build_expr_list [L.const_int i32_t 1]
-               el)) builder
+             (List.rev(List.fold_left build_expr_list
+             [L.const_int i32_t 0; L.const_pointer_null str_t; L.const_int i32_t
+              1] el)) builder
              in builder
          | "makeTriangle" -> let pix = expr builder e in
              let _ = fill_struct pix
              (List.rev(List.fold_left build_expr_list [L.const_int i32_t 0;
-             L.const_int i32_t 2;]
+             L.const_int i32_t 0; L.const_pointer_null str_t; L.const_int i32_t 2]
                el)) builder
              in builder
          | "makeEllipse" -> let pix = expr builder e in
              let _ = fill_struct pix
-             (List.rev(List.fold_left build_expr_list [L.const_int i32_t 3]
-               el)) builder
+             (List.rev(List.fold_left build_expr_list
+             [L.const_int i32_t 0; L.const_pointer_null str_t; L.const_int i32_t
+              3] el)) builder
              in builder
+         (*| "makeTextBox" -> let pix = expr builder in
+              *)
          | _ -> let _ = to_imp "object call: " ^ name in builder
       )
       | s -> to_imp (string_of_sstmt (map, ss))
