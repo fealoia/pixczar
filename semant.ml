@@ -345,7 +345,9 @@ let check (globals, functions) =
 
       in let check_function func =
     let formals' = check_binds "formal" func.formals in
-    let sbody_stmt = check_stmt (Block func.body) symbols func 0
+    let symbols_with_formals = List.fold_left (fun m (ty, name) -> StringMap.add name ty m)
+    symbols func.formals in
+    let sbody_stmt = check_stmt (Block func.body) symbols_with_formals func 0
 
     in (* body of check_function *)
     { styp = func.typ;

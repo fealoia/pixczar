@@ -1,9 +1,11 @@
 Void add10(Int x) {
     x = x + 10;
+    print(x);
 }
 
 Void add20(Int x) {
     x = x + 20;
+    print(x);
 }
 
 Void main() {
@@ -12,3 +14,4 @@ Void main() {
     add20(x);
     print(x);
 }
+

@@ -6,6 +6,7 @@ module StringMap = Map.Make(String)
 module Hash = Hashtbl
 
 let local_values:(string, L.llvalue) Hash.t = Hash.create 50
+let formal_values = Hash.create 50
 let global_values:(string, L.llvalue) Hash.t = Hash.create 50
 let array_info:(string, int) Hash.t = Hash.create 50
 
@@ -176,9 +177,16 @@ let translate (globals, functions) =
               | _ -> L.build_sub e' (L.const_int i32_t 1) "sub" builder)
       )
       | _ -> to_imp "expression"
-
+    
     and id_gen builder id deref =
-        if Hash.mem local_values id then
+        if Hash.mem formal_values id then
+            let (the_function,idx) = Hash.find formal_values id in
+            let _ = Hash.remove formal_values id in
+            let _val = L.param the_function idx in
+            let alloca = L.build_alloca (L.type_of _val) "param_alloc" builder in
+            let _ = ignore(L.build_store _val alloca builder) in
+            let _ = Hash.add local_values id alloca in _val
+        else if Hash.mem local_values id then
             let _val = Hash.find local_values id in
             if deref = true then
               L.build_load _val id builder
@@ -189,7 +197,7 @@ let translate (globals, functions) =
               L.build_load _val id builder
             else _val
         else
-          raise(Failure("Unknown variable" ^ id))
+          raise(Failure("Unknown variable: " ^ id))
 
     and assign_gen builder se1 se2 =
       let (_, t1, e1) = se1 in
@@ -349,6 +357,8 @@ let translate (globals, functions) =
           in List.iter declare_svar svar_list
         in List.iter declare_globals globals) in
 
+     let func_params idx (_,s) = Hash.add formal_values s (the_function,idx) in
+     let _ = List.iteri func_params fdecl.sformals in
 
     (* Each basic block in a program ends with a "terminator" instruction i.e.
     one that ends the basic block. By definition, these instructions must
