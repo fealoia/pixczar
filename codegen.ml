@@ -369,9 +369,9 @@ let translate (globals, functions) =
       | SBlock sl -> let stmt_block builder s = stmt builder s loop_list in
           List.fold_left stmt_block builder sl
       | SReturn e -> let _ = match fdecl.styp with
-                              A.Int -> L.build_ret (expr builder e) builder
-                            | _ -> to_imp (A.string_of_typ fdecl.styp)
-                     in builder
+          A.Void -> L.build_ret_void builder 
+        | _ -> L.build_ret (expr builder e) builder
+        in builder
       | SWhile (predicate, body) ->
           (* First create basic block for condition instructions -- this will
           serve as destination in the case of a loop *)
@@ -490,6 +490,8 @@ let translate (globals, functions) =
     add_terminal builder (match fdecl.styp with
         A.Void -> L.build_ret_void
       | A.Float -> L.build_ret (L.const_float float_t 0.0)
-      | t -> L.build_ret (L.const_int (ltype_of_typ t) 0))
+      | A.Int -> L.build_ret (L.const_int i32_t 0)
+      | A.Bool -> L.build_ret (L.const_int i1_t 0)
+      | t -> L.build_ret (L.const_pointer_null (ltype_of_typ t)))
 
-  in List.iter build_function_body functions; the_module
+    in List.iter build_function_body functions; the_module

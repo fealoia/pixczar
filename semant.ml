@@ -89,7 +89,8 @@ let check (globals, functions) =
        | Array(t, _) -> (match rvaluet with
            Array(t, _) -> lvaluet
          | _ -> raise(Failure (err)))
-       | _ -> if lvaluet = rvaluet then lvaluet else raise (Failure err)
+       | _ -> if lvaluet = rvaluet then (if rvaluet=Null then lvaluet else
+           rvaluet) else raise (Failure err)
     in
 
     (* Build local symbol table of variables for this function *)
