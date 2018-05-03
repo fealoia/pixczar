@@ -89,8 +89,7 @@ let check (globals, functions) =
        | Array(t, _) -> (match rvaluet with
            Array(t, _) -> lvaluet
          | _ -> raise(Failure (err)))
-       | _ -> if lvaluet = rvaluet then (if rvaluet=Null then lvaluet else
-           rvaluet) else raise (Failure err)
+       | _ -> if lvaluet = rvaluet then lvaluet else raise (Failure err)
     in
 
     (* Build local symbol table of variables for this function *)
@@ -329,7 +328,8 @@ let check (globals, functions) =
          in let _ = (if t=Void then raise(Failure("Void type declaration")))
          in (if StringMap.mem s map then raise ( Failure ("Duplicate variable declaration " ^ s))
              else let (map, t2, _) = check_expr e map in
-                  let new_symbols = StringMap.add s t2 map
+                  let new_symbols = if t2=Void then StringMap.add s t map else
+                      StringMap.add s t2 map
                      in let err = "LHS type of " ^ string_of_typ t ^ " not the same as " ^
                        "RHS type of " ^ string_of_typ t2 in
                      let _ = if t2 <> Void then check_assign t t2 err else t in
