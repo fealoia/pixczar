@@ -1,0 +1,4 @@
+Void main() {
+	Float f  = 2.0;
+	f = 3;
+}
