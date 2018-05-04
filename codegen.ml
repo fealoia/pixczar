@@ -425,7 +425,14 @@ let translate (globals, functions) =
              let node = typ_malloc placement_node_t placement_node
                [prev_node; placement] builder in
              let _ = ignore(L.build_store node pnode_ptr builder) in
-             builder 
+             builder
+         | "clearPlacements" -> let frame = expr builder e in
+             let node_ptr = L.build_struct_gep frame 0 "clear_plcmts" builder in
+             let _ = ignore(L.build_store (L.const_pointer_null
+             placement_node_t) node_ptr builder) in
+             let plcmt_ptr = L.build_struct_gep frame 1 "clear_plcmts" builder in
+             let _ = ignore(L.build_store (L.const_pointer_null
+             placement_t) plcmt_ptr builder) in builder
          | "makeRectangle" -> let pix = expr builder e in
              let _ = fill_struct pix
              (List.rev(List.fold_left build_expr_list

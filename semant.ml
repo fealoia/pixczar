@@ -318,8 +318,12 @@ let check (globals, functions) =
                  | "clear" -> (map, SObjCall(checked_expr, func, check_func []
                    args))
                  | _ -> raise(Failure("ObjCall not yet implemented")))
-            | (_, Frame, _) -> if func <> "addPlacement" then raise (Failure(err)) else
-                  (map, SObjCall(checked_expr, func, check_func [(Placement, "place")] args))
+            | (_, Frame, _) -> (match func with
+                   "addPlacement" ->
+                    (map, SObjCall(checked_expr, func, check_func [(Placement, "place")] args))
+                 | "clearPlacements" ->
+                    (map, SObjCall(checked_expr, func, check_func [] args))
+                 | _ -> raise(Failure("ObjCall not yet implemented")))
             | _ -> raise (Failure(err))
           in check_it
       | VarDecs(field) -> let t = fst (fst (get_first field)) in 
