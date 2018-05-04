@@ -41,7 +41,7 @@ function generate_includes {
                 # echo "$to_include" >&2
                 # echo -e hi >&2
 
-                output="${source//"$line"/"$to_include"}"
+                output="${source//"$line"/$to_include}"
                 echo "$output" > "$name$suffix"
                 ret_code=1
             fi
