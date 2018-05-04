@@ -11,10 +11,9 @@ LINKER_FLAGS = -lGL -lglut -lGLEW -lglfw
 all: main.o
 
 main.o: main.c
-	$(CC) -c -o $@ main.c $(COMPILER_FLAGS) $(LINKER_FLAGS)
-	#$(CC) -c -o $@ main.c $(CFLAGS)
+	$(CC) -c -o $@ main.c $(COMPILER_FLAGS)
 
 clean:
 	rm main.o
 
-new: clean all
+
