@@ -174,6 +174,11 @@ let check (globals, functions) =
              | String -> (map, Void, SCall("prints", [m, et, e']))
              | Bool -> (map, Void, SCall("printb", [m, et, e']))
              | _ -> raise (Failure ("invalid argument for print")))
+           | "length" -> if List.length args != 1 then
+              raise (Failure ("expecting 1 argument in length"))
+           else let (m, et, e') = check_expr (List.hd args) map in (match et with
+             | Array(_,_) -> (map, Int, SCall("length", [m, et, e']))
+             | _ -> raise (Failure ("invalid argument for length")))
          | _ ->
           let fd = find_func fname in
           let param_length = List.length fd.formals in
