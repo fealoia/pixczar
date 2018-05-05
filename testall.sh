@@ -19,10 +19,10 @@ LIBS="-lGL -lglut -lGLEW -lglfw -lm -L./openGL -lSOIL"
 source ./include.sh
 
 create() { # generate code
-    ./pixczar.native "$1" > "$2".ll
-    llc "$2".ll
-    eval "$CC $LIBS -o $2.exe $2.s opengl/main.o"
-    rm "$2".s "$2".ll
+    ./pixczar.native "$1" > "$filename".ll
+    llc "$filename".ll
+    eval "$CC $LIBS -o $filename.exe $filename.s opengl/main.o"
+    rm "$filename".s "$filename".ll
 }
 
 for file in $passing_tests
@@ -39,7 +39,7 @@ do
   ######################################
 
   outfile="$filename".out
-  create "$file" "$filename"
+  create "$file"
   diff "$outfile" <(./"$filename".exe)
   if  [ $? -ne 0 ];
   then
