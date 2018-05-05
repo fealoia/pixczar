@@ -11,7 +11,9 @@ reset=`tput sgr0`
 suffix="_included.pxr"
 
 CC="clang"
-LIBS="-framework GLUT -framework OpenGL -framework CoreFoundation -lGLEW -lglfw -L./openGL -lSOIL"
+LIBS="-framework GLUT -framework OpenGL -framework CoreFoundation -lsoil -lGLEW -lglfw"
+LIBS="-lGL -lglut -lGLEW -lglfw -lm -L./openGL -lSOIL"
+
 
 ./make.sh
 source ./include.sh

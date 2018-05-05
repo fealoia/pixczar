@@ -66,7 +66,7 @@ let translate (globals, functions) =
       i32_t; |] in
   let builtin_render_func : L.llvalue =
      L.declare_function "render" builtin_render_t the_module in
-      
+
   let to_imp str = raise (Failure ("Not yet implemented: " ^ str)) in
 
   (* Define each function (arguments and return type) so we can
@@ -84,7 +84,7 @@ let translate (globals, functions) =
     let string_format_str builder = L.build_global_stringptr "%s\n" "fmt" builder in
     let float_format_str builder = L.build_global_stringptr "%g\n" "fmt" builder in
     let bool_format_str builder = L.build_global_stringptr "%d\n" "fmt" builder in
-     
+
     let gen_default_value t builder = match t with
         A.Int -> L.const_int i32_t 0
       | A.Float -> L.const_float float_t 0.0
@@ -93,12 +93,12 @@ let translate (globals, functions) =
       | _ -> raise(Failure("No default value for this type")) in
 
     let fill_struct structobj el builder =
-       let store_el idx e = 
+       let store_el idx e =
            let e_p = L.build_struct_gep structobj idx "struct_build" builder
            in ignore(L.build_store e e_p builder)
        in List.iteri store_el el in
 
-    let typ_malloc typ_ptr typ_struct el_arr builder = 
+    let typ_malloc typ_ptr typ_struct el_arr builder =
        let struct_malloc = L.build_malloc typ_struct "malloc" builder in
        let struct_malloc = L.build_pointercast struct_malloc typ_ptr "cast"
          builder in
@@ -116,16 +116,16 @@ let translate (globals, functions) =
       | SCall (id, e) ->
          let build_expr_list expr_list e = (expr builder e) :: expr_list in
          (match id with
-           "printf" ->  
+           "printf" ->
              L.build_call builtin_printf_func [| float_format_str builder ; (expr
                 builder (List.hd e)) |] "printf" builder
-         | "printi"  -> 
+         | "printi"  ->
              L.build_call builtin_printf_func [| int_format_str builder ; (expr builder
                 (List.hd e)) |] "printf" builder
-         | "prints"  -> 
+         | "prints"  ->
              L.build_call builtin_printf_func [| string_format_str builder ; (expr builder
                 (List.hd e)) |] "printf" builder
-         | "printb"  -> 
+         | "printb"  ->
              L.build_call builtin_printf_func [| bool_format_str builder ; (expr builder
                 (List.hd e)) |] "printf" builder
          | "render"  -> let size = (match List.hd e with
@@ -150,16 +150,16 @@ let translate (globals, functions) =
           hd :: tl -> to_ll ((expr builder hd) :: ll_list) tl
         | _ -> List.rev(ll_list)) in let arr = to_ll [] el in
           (match t with (*ToDo: garbage collection*)
-          Pix -> let zero = L.const_int i32_t 0 in typ_malloc pix_t pix_struct 
+          Pix -> let zero = L.const_int i32_t 0 in typ_malloc pix_t pix_struct
            [zero;L.const_pointer_null str_t;zero;zero;
            L.const_pointer_null (L.pointer_type i32_t)] builder
         | Placement -> typ_malloc placement_t placement_struct arr builder
-        | Frame -> let node = typ_malloc placement_node_t placement_node 
+        | Frame -> let node = typ_malloc placement_node_t placement_node
            [L.const_pointer_null placement_node_t; L.const_pointer_null
-             placement_t] builder in 
+             placement_t] builder in
            typ_malloc frame_t frame_struct [node] builder
         | _ -> to_imp "Additional types")
-      | SNewArray(t, size) -> let lt = ltype_of_typ t 
+      | SNewArray(t, size) -> let lt = ltype_of_typ t
         in create_array_gen builder lt size
       | SCreateArray(el) -> let e = List.hd el in let (_, t, _) = e in
          let lt = ltype_of_typ t in
@@ -177,7 +177,7 @@ let translate (globals, functions) =
               | _ -> L.build_sub e' (L.const_int i32_t 1) "sub" builder)
       )
       | _ -> to_imp "expression"
-    
+
     and id_gen builder id deref =
         if Hash.mem formal_values id then
             let (the_function,idx) = Hash.find formal_values id in
@@ -202,11 +202,11 @@ let translate (globals, functions) =
     and assign_gen builder se1 se2 =
       let (_, t1, e1) = se1 in
       let (_, t2, e2) = se2 in
-      
+
       let rhs = (match e2 with
           SId(id) -> id_gen builder id true
         | SAccessArray(name, idx) -> access_array_gen builder name idx true
-        | _ -> expr builder se2) in 
+        | _ -> expr builder se2) in
       let rhs = (match t2 with
           A.Null -> L.const_null (ltype_of_typ t2)
         | _ -> rhs) in
@@ -224,10 +224,10 @@ let translate (globals, functions) =
       let arr = L.build_array_malloc lt size_arr "array_gen" builder in
       L.build_pointercast arr (L.pointer_type lt) "array_cast" builder
 
-    and fill_array builder arr el = 
-      let array_assign idx arr_e = ignore(L.build_store (expr builder arr_e) 
+    and fill_array builder arr el =
+      let array_assign idx arr_e = ignore(L.build_store (expr builder arr_e)
       (L.build_gep arr [| (L.const_int i32_t (idx)) |] "array_assign"
-        builder) builder) in 
+        builder) builder) in
       List.iteri array_assign el;
 
     and llvm_int_to_int llint =
@@ -242,11 +242,11 @@ let translate (globals, functions) =
       let int_size = Hash.find array_info name in
       let _ = (if int_index < 0 || int_index >= int_size
             then raise(Failure("Illegal index"))) in
-      
+
       let arr_val = L.build_gep arr [| index |] "arr_access" builder in
       if is_assign then arr_val
       else L.build_load arr_val "arr_access_val" builder
-   
+
     and f_op op = match op with
         A.Add     -> L.build_fadd
       | A.Sub     -> L.build_fsub
@@ -264,7 +264,7 @@ let translate (globals, functions) =
     and binop_gen builder e1 op e2 =
       let (_, t1, _) = e1 and (_, t2, _) = e2
         and e1' = expr builder e1
-        and e2' = expr builder e2 in 
+        and e2' = expr builder e2 in
         if t1=t2 && t1 = A.Float then (f_op op) e1' e2' "tmp" builder
         else if t1=t2 then (match op with
           | A.Add     -> L.build_add
@@ -281,7 +281,7 @@ let translate (globals, functions) =
           | A.Greater -> L.build_icmp L.Icmp.Sgt
           | A.Geq     -> L.build_icmp L.Icmp.Sge
           ) e1' e2' "tmp" builder
-       else 
+       else
           (f_op op) (if t1=Int then L.const_sitofp e1' float_t else e1')
           (if t2=Int then L.const_sitofp e2' float_t else e2') "tmp" builder
 
@@ -291,12 +291,12 @@ let translate (globals, functions) =
           A.Neg, A.Int -> L.build_neg unop_lval "neg_int_tmp" builder
         | A.Neg, A.Float -> L.build_fneg unop_lval "neg_flt_tmp" builder
         | A.Not, A.Bool -> L.build_not unop_lval "not_bool_tmp" builder
-        | A.PreIncrement, _ -> (match e' with 
+        | A.PreIncrement, _ -> (match e' with
              SId(_) | SAccessArray(_, _) -> let _ = assign_gen builder e (m, t, SBinop(e,
                 A.Add, (m, t, SLiteral(1)))) in unop_lval
           | _ -> let _ = L.build_add unop_lval (L.const_int i32_t 1) "add" builder
              in unop_lval)
-        | A.PreDecrement, _ -> (match e' with 
+        | A.PreDecrement, _ -> (match e' with
              SId(_) | SAccessArray(_, _) -> let _ = assign_gen builder e (m, t, SBinop(e,
                 A.Sub, (m, t, SLiteral(1)))) in unop_lval
           | _ -> let _ = L.build_sub unop_lval (L.const_int i32_t 1) "add" builder
@@ -304,10 +304,10 @@ let translate (globals, functions) =
         | _ -> raise(Failure("Unsupported unop for " ^ A.string_of_uop unop ^
           " and type " ^ A.string_of_typ t))
         in
-      
+
   let build_vars svar_list hashtable builder =
       let ((t,_),_) = List.hd svar_list in
-      let build_var builder svar = 
+      let build_var builder svar =
           let ((_, s), (m, et, e')) = svar in
           let svar' = if et=A.Void then
               gen_default_value t builder else
@@ -323,14 +323,14 @@ let translate (globals, functions) =
           let _ = ignore(L.build_store svar' alloca builder) in builder
        in List.fold_left build_var builder svar_list in
 
- let build_global svar_list = 
+ let build_global svar_list =
      let build_svar svar =
       let ((t, s), _) = svar in
       let lltype = ltype_of_typ t in
       ignore(Hash.add global_values s (L.declare_global lltype s the_module)) in
      List.iter build_svar svar_list in
 
-  let _ = List.iter build_global globals in 
+  let _ = List.iter build_global globals in
 
   let bool_pred_gen builder e = let (_,t,sx) = e in
     let e' = expr builder e in (match t with
@@ -349,7 +349,7 @@ let translate (globals, functions) =
     let _ = (if fdecl.sfname="main" then
         let declare_globals svar_list =
           let ((t,_),_) = List.hd svar_list in
-          let declare_svar svar =  
+          let declare_svar svar =
           let ((_, s), (m', t',e')) = svar in
           let svar' = if t'=A.Void then
             gen_default_value t builder else expr builder (m', t',e') in
@@ -369,7 +369,7 @@ let translate (globals, functions) =
     let add_terminal builder instr =
                            (* The current block where we're inserting instr *)
       match L.block_terminator (L.insertion_block builder) with
-	Some _ -> ()
+        Some _ -> ()
       | None -> ignore (instr builder) in
 (*
   This function generates code for statements
@@ -379,7 +379,7 @@ let translate (globals, functions) =
       | SBlock sl -> let stmt_block builder s = stmt builder s loop_list in
           List.fold_left stmt_block builder sl
       | SReturn e -> let _ = match fdecl.styp with
-          A.Void -> L.build_ret_void builder 
+          A.Void -> L.build_ret_void builder
         | _ -> L.build_ret (expr builder e) builder
         in builder
       | SWhile (predicate, body) ->
@@ -463,7 +463,7 @@ let translate (globals, functions) =
       let if_bool_val = bool_pred_gen builder predicate in
       let if_bb = L.append_block context "if" the_function in
       let () = add_terminal builder (L.build_br if_bb) in
-      
+
       let merge_bb = L.append_block context "merge" the_function in
       let branch_instr = L.build_br merge_bb in
 
@@ -471,17 +471,17 @@ let translate (globals, functions) =
       let then_builder = stmt (L.builder_at_end context then_bb) then_stmt
         loop_list in
       let () = add_terminal then_builder branch_instr in
-      
+
       let else_bb = L.append_block context "else" the_function in
       let else_builder = stmt (L.builder_at_end context else_bb) else_stmt
         loop_list in
       let () = add_terminal else_builder branch_instr in
 
       let rec elseif_bb_gen elseif_list bool_val pred_bb body_bb loop_list = match elseif_list with
-           (_, SElseIf(pred, body)) :: tl -> 
+           (_, SElseIf(pred, body)) :: tl ->
              let elseif_pred_val = expr (L.builder_at_end context pred_bb) pred in
              let elseif_pred_bb = L.append_block context "elseif_pred" the_function in
-             
+
              let elseif_body_bb = L.append_block context "elseif_body" the_function in
              let elseif_builder = stmt (L.builder_at_end context elseif_body_bb)
                body loop_list in
@@ -491,12 +491,12 @@ let translate (globals, functions) =
                 (L.builder_at_end context pred_bb)
              in elseif_bb_gen tl elseif_pred_val elseif_pred_bb elseif_body_bb loop_list
 
-         | _ -> L.build_cond_br bool_val body_bb else_bb 
+         | _ -> L.build_cond_br bool_val body_bb else_bb
                 (L.builder_at_end context pred_bb)
-       in let elseif_ss = match elseif_stmts with 
+       in let elseif_ss = match elseif_stmts with
            (_, SBlock(elseif_ss)) -> elseif_ss
          | _ -> raise(Failure("Elseif must contain a Block"))
-       
+
        in let _ = elseif_bb_gen elseif_ss if_bool_val if_bb then_bb loop_list in
        L.builder_at_end context merge_bb
     in
