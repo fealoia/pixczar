@@ -6,7 +6,6 @@ module StringMap = Map.Make(String)
 module Hash = Hashtbl
 
 let local_values:(string, L.llvalue) Hash.t = Hash.create 50
-let formal_values = Hash.create 50
 let global_values:(string, L.llvalue) Hash.t = Hash.create 50
 let array_info:(string, int) Hash.t = Hash.create 50
 
@@ -184,14 +183,7 @@ let translate (globals, functions) =
       | _ -> to_imp "expression"
 
     and id_gen builder id deref =
-        if Hash.mem formal_values id then
-            let (the_function,idx) = Hash.find formal_values id in
-            let _ = Hash.remove formal_values id in
-            let _val = L.param the_function idx in
-            let alloca = L.build_alloca (L.type_of _val) "param_alloc" builder in
-            let _ = ignore(L.build_store _val alloca builder) in
-            let _ = Hash.add local_values id alloca in _val
-        else if Hash.mem local_values id then
+        if Hash.mem local_values id then
             let _val = Hash.find local_values id in
             if deref = true then
               L.build_load _val id builder
@@ -239,15 +231,19 @@ let translate (globals, functions) =
       let llint = L.int64_of_const llint in match llint with
           Some(x) -> Int64.to_int(x)
         | _ -> raise(Failure("int64 operation failed"))
-
+    
     and access_array_gen builder name index is_assign =
+      let (_,_,ss) = index in
       let arr = id_gen builder name true in
       let index = expr builder index in
-      let int_index = llvm_int_to_int index in
-      let int_size = Hash.find array_info name in
-      let _ = (if int_index < 0 || int_index >= int_size
-            then raise(Failure("Illegal index"))) in
-
+      let _ = (match ss with
+         SLiteral(i) ->
+          let int_index = llvm_int_to_int index in
+          let int_size = Hash.find array_info name in
+          (if int_index < 0 || int_index >= int_size
+            then raise(Failure("Illegal index")))
+        | _ -> ()) in
+      
       let arr_val = L.build_gep arr [| index |] "arr_access" builder in
       if is_assign then arr_val
       else L.build_load arr_val "arr_access_val" builder
@@ -286,9 +282,9 @@ let translate (globals, functions) =
           | A.Greater -> L.build_icmp L.Icmp.Sgt
           | A.Geq     -> L.build_icmp L.Icmp.Sge
           ) e1' e2' "tmp" builder
-       else
-          (f_op op) (if t1=Int then L.const_sitofp e1' float_t else e1')
-          (if t2=Int then L.const_sitofp e2' float_t else e2') "tmp" builder
+       else 
+          (f_op op) (if t1=Int then L.build_sitofp e1' float_t "cast" builder else e1')
+          (if t2=Int then L.build_sitofp e2' float_t "cast" builder else e2') "tmp" builder
 
       and unop_gen builder unop e =
       let unop_lval = expr builder e
@@ -362,7 +358,10 @@ let translate (globals, functions) =
           in List.iter declare_svar svar_list
         in List.iter declare_globals globals) in
 
-     let func_params idx (_,s) = Hash.add formal_values s (the_function,idx) in
+     let func_params idx (_,s) = let _val = L.param the_function idx in
+       let alloca = L.build_alloca (L.type_of _val) "param_alloc" builder in
+       let _ = ignore(L.build_store _val alloca builder) in
+       ignore(Hash.add local_values s alloca) in
      let _ = List.iteri func_params fdecl.sformals in
 
     (* Each basic block in a program ends with a "terminator" instruction i.e.
