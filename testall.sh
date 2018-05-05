@@ -11,9 +11,18 @@ reset=`tput sgr0`
 suffix="_included.pxr"
 
 CC="clang"
-LIBS="-framework GLUT -framework OpenGL -framework CoreFoundation -lsoil -lGLEW -lglfw"
-LIBS="-lGL -lglut -lGLEW -lglfw -lm -L./openGL -lSOIL"
 
+os=`uname`
+if [[ "$os" == "Darwin" ]]
+then
+  LIBS="-framework GLUT -framework OpenGL -framework CoreFoundation -lsoil -lGLEW -lglfw"
+elif [[ "$os" == "Linux" ]]
+then
+  LIBS="-lGL -lglut -lGLEW -lglfw -lm -L./openGL -lSOIL"
+else
+  LIBS="-lGL -lglut -lGLEW -lglfw -lm -L./openGL -lSOIL"
+  echo '`uname` not Darwin or Linux, compilation may fail'
+fi
 
 ./make.sh
 source ./include.sh
