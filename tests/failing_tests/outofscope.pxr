@@ -1,0 +1,8 @@
+Void Hello(){
+	print(x);
+}
+
+Void main() {
+	Int x = 3;
+	Hello();
+}

@@ -128,6 +128,11 @@ let translate (globals, functions) =
          | "printb"  ->
              L.build_call builtin_printf_func [| bool_format_str builder ; (expr builder
                 (List.hd e)) |] "printf" builder
+         | "length" -> let (_,_,ss) = List.hd e in (match ss with
+             SId(s) -> L.const_int i32_t (Hash.find array_info s)
+            | SNewArray(_,idx) -> L.const_int i32_t idx
+            | SCreateArray(el) -> L.const_int i32_t (List.length el)
+            | _ -> raise(Failure("incorrect type")))
          | "render"  -> let size = (match List.hd e with
             | (_,A.Array(_,size),_) -> size
             | _ -> raise(Failure("Invalid render input"))) in
