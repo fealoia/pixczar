@@ -1,0 +1,5 @@
+Void main() {
+	Frame[] frames = new Frame[1];
+	frames[0] = new Frame();
+	frames[1] = new Frame();
+}

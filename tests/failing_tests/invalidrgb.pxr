@@ -1,0 +1,4 @@
+Void main() {
+  Pix test = new Pix();
+  test.makeTriangle(200, [])
+}
