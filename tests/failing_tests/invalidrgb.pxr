@@ -1,0 +1,6 @@
+Void main() {
+  Int[] arr = [200,200,200,200];
+  Pix test = new Pix();
+  test.makeTriangle(200,arr);
+
+}
