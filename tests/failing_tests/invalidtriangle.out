@@ -1,0 +1,2 @@
+Fatal error: exception Failure("illegal object function call tri.makeTriangle(200, 200, [200,200,200]);
+")

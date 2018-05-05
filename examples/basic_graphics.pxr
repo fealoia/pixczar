@@ -1,0 +1,31 @@
+Void main() {
+  Int[] arr = [200,200,200];
+  Pix test = new Pix();
+  test.makeTriangle(200,arr);
+  Pix rect = new Pix();
+  rect.makeRectangle(100,200,arr);
+  Pix el = new Pix();
+  el.makeEllipse(100,200,arr);
+  Pix text = new Pix();
+  text.uploadImage("images/shrek.png",200,200);
+  Placement placed = new Placement(el,100,300,3,5);
+  Placement placed1 = new Placement(text,200,300,3,5);
+  Placement placed2 = new Placement(test,300,300,3,5);
+  Placement placed3 = new Placement(rect,400,300,3,5);
+  Placement placed4 = new Placement(test,500,300,3,5);
+  Placement placed5 = new Placement(test,600,300,3,5);
+  Frame[] frames = new Frame[6];
+  frames[0] = new Frame();
+  frames[1] = new Frame();
+  frames[2] = new Frame();
+  frames[3] = new Frame();
+  frames[4] = new Frame();
+  frames[5] = new Frame();
+  frames[0].addPlacement(placed);
+  frames[1].addPlacement(placed1);
+  frames[2].addPlacement(placed2);
+  frames[3].addPlacement(placed3);
+  frames[4].addPlacement(placed4);
+  frames[5].addPlacement(placed5);
+  print(render(frames,1,800,600)); 
+}

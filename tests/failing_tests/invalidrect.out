@@ -1,0 +1,2 @@
+Fatal error: exception Failure("illegal object function call rect.makeRectangle(200, [200,200,200]);
+")
