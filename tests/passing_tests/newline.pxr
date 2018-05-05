@@ -1,0 +1,5 @@
+Void main() {
+	print("hello");
+	print("");
+	print("world");
+}

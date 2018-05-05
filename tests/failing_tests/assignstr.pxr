@@ -1,0 +1,4 @@
+Void main() {
+	String s  = "hello";
+	s = 3;
+}
