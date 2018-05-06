@@ -1,0 +1,24 @@
+Int WIDTH = 800;
+Int HEIGHT = 800;
+
+Void fillFrames(Frame[] frames, Placement placement, Int start, Int end) {
+  Int i;
+  for(i = start; i < end; i++) {
+      if(i < length(frames)) {
+        frames[i].addPlacement(placement);
+      }
+  }
+}
+
+//ToDo: Need to fix array bug!!!!!!!
+/*Void keyFrame(Frame[] frames, Int start, Pix obj, Int[] from, Int[] to, Int duration) {
+    Int xTimeStep = (to[0]-from[0])/duration;
+    Int yTimeStep = (to[1]-from[1])/duration;
+
+    Int i;
+    for(i = 0; i < length(frames); i++) {
+        Placement plcmt = new Placement(obj, from[0] + i*xTimeStep,
+                from[1] + i*yTimeStep);
+        frames[i].addPlacement(plcmt); 
+    }
+}*/
