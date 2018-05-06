@@ -32,9 +32,9 @@ struct frame {
 } typedef frame;
 
 void color(int rgb[]) {
-    float r = (1/255.0)*rgb[0];
-    float g = (1/255.0)*rgb[1];
-    float b = (1/255.0)*rgb[2];
+    float r = (1/255.0)*rgb[1];
+    float g = (1/255.0)*rgb[2];
+    float b = (1/255.0)*rgb[3];
     
     glColor3f(r, g, b);
 }
@@ -143,7 +143,7 @@ int render(int numFrames, frame *frames[], int fps, int width, int height) {
 
     //ToDo: your shit new
     int i;
-    for(i=0; i<numFrames; i++) {
+    for(i=1; i<numFrames; i++) {
         if(glfwWindowShouldClose(window)) break;
         
         glClearColor( 1.0f, 1.0f, 1.0f, 1.0f );

@@ -138,8 +138,14 @@ let translate (globals, functions) =
          | "printb"  ->
              L.build_call builtin_printf_func [| bool_format_str builder ; (expr builder
                 (List.hd e)) |] "printf" builder
-         | "length" -> let (_,_,ss) = List.hd e in (match ss with
-             SId(s) -> L.const_int i32_t (Hash.find array_info s)
+         | "length" -> let (_,t,ss) = List.hd e in (match ss with
+             SId(s) -> (match t with
+                Array(t,_) -> let arr = id_gen builder s true in
+                  let ptr = L.build_gep arr [|L.const_int i32_t 0|] "size" builder in
+                  let size = L.build_bitcast ptr (L.pointer_type i32_t) "cast"
+                    builder in 
+                  L.build_load size "size" builder
+              | _ -> raise(Failure("Incorrect length input")))
             | SNewArray(_,idx) -> L.const_int i32_t idx
             | SCreateArray(el) -> L.const_int i32_t (List.length el)
             | _ -> raise(Failure("incorrect type")))
@@ -169,18 +175,18 @@ let translate (globals, functions) =
         | Placement -> typ_malloc placement_t placement_struct arr builder
         | Frame -> gen_default_value A.Frame builder
         | _ -> to_imp "Additional types")
-      | SNewArray(t, size) -> let lt = ltype_of_typ t
-        in let arr = create_array_gen builder lt size in
+      | SNewArray(t, size) -> let lt = ltype_of_typ t in
+        let arr = create_array_gen builder lt size in
         let rec fill size = (match size with
-           -1 -> ()
+           0 -> ()
          | _ -> let _ = ignore(L.build_store (gen_default_value t builder)
            (L.build_gep arr [| (L.const_int i32_t size) |] "array_assign"
            builder) builder) in fill (size-1)) in 
-           let _ = fill (size-1) in arr
+           let _ = fill (size) in arr
       | SCreateArray(el) -> let e = List.hd el in let (_, t, _) = e in
          let lt = ltype_of_typ t in
-         let arr = create_array_gen builder lt (List.length el)
-         in let _ = fill_array builder arr (List.rev el) in arr
+         let arr = create_array_gen builder lt (List.length el) in
+         let _ = fill_array builder arr (List.rev el) in arr
       | SAccessArray(name, idx) -> access_array_gen builder name idx false
       | SPostUnop(e, op) -> let (_, _, e'') = e in let e' = expr builder e in (match op with
             PostIncrement -> (match e'' with
@@ -229,14 +235,21 @@ let translate (globals, functions) =
       rhs
 
     and create_array_gen builder lt size =
-      let size_arr =  L.const_int i32_t (size) in
+      let size_arr =  L.const_int i32_t (size+1) in
       let arr = L.build_array_malloc lt size_arr "array_gen" builder in
-      L.build_pointercast arr (L.pointer_type lt) "array_cast" builder
+      let arr = L.build_pointercast arr (L.pointer_type lt) "array_cast"
+      builder in
+      let casted = L.build_gep arr [|L.const_int i32_t 0|] "size"
+        builder in
+      let casted = L.build_pointercast casted (L.pointer_type i32_t) "cast"
+      builder in
+      let _ = ignore(L.build_store (L.const_int i32_t size)
+      casted builder) in arr
 
     and fill_array builder arr el =
       let array_assign idx arr_e = ignore(L.build_store (expr builder
       arr_e)
-      (L.build_gep arr [| (L.const_int i32_t (idx)) |] "array_assign"
+      (L.build_gep arr [| (L.const_int i32_t (idx+1)) |] "array_assign"
         builder) builder) in
       List.iteri array_assign el
 
@@ -256,7 +269,7 @@ let translate (globals, functions) =
           (if int_index < 0 || int_index >= int_size
             then raise(Failure("Illegal index")))
         | _ -> ()) in
-      
+      let index = L.build_add index (L.const_int i32_t 1) "add" builder in
       let arr_val = L.build_gep arr [| index |] "arr_access" builder in
       if is_assign then arr_val
       else L.build_load arr_val "arr_access_val" builder
@@ -375,8 +388,7 @@ let translate (globals, functions) =
        let alloca = L.build_alloca (L.type_of _val) "param_alloc" builder in
        let _ = ignore(L.build_store _val alloca builder) in
        let _ = (match t with
-           A.Array(_,_) -> ignore(Hash.add array_info s
-           (Int32.to_int(Int32.max_int)))
+         A.Array(_,size) -> ignore(Hash.add array_info s (Int32.to_int(Int32.max_int)))
          | _ -> ()) in
        ignore(Hash.add local_values s alloca) in
      let _ = List.iteri func_params fdecl.sformals in

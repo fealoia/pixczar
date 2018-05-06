@@ -23,3 +23,25 @@ Void keyFrame(Frame[] frames, Int start, Pix obj, Int[] from, Int[] to, Int dura
         }
     }
 }
+
+Int accelerationDistance(Int t, Int a) {
+  Int half = a/2;
+  return half * t * t;
+}
+
+Void projectile(Frame[] frames, Pix obj, Int xSpeed, Int width, 
+        Int height, Int gravity) {
+    //g in pixel/frame^2
+    Int d = accelerationDistance(1, gravity);
+
+   Int i;
+   for(i=0; d < height; i++) {
+      height = height - d;
+
+      if(i < length(frames)) {
+        frames[i].addPlacement(new Placement(obj, width + i*xSpeed, height));
+      } else {
+        break;
+      }
+   } 
+}
