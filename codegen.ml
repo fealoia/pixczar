@@ -371,9 +371,13 @@ let translate (globals, functions) =
           in List.iter declare_svar svar_list
         in List.iter declare_globals globals) in
 
-     let func_params idx (_,s) = let _val = L.param the_function idx in
+     let func_params idx (t,s) = let _val = L.param the_function idx in
        let alloca = L.build_alloca (L.type_of _val) "param_alloc" builder in
        let _ = ignore(L.build_store _val alloca builder) in
+       let _ = (match t with
+           A.Array(_,_) -> ignore(Hash.add array_info s
+           (Int32.to_int(Int32.max_int)))
+         | _ -> ()) in
        ignore(Hash.add local_values s alloca) in
      let _ = List.iteri func_params fdecl.sformals in
 
