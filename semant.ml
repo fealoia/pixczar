@@ -371,6 +371,8 @@ let check (globals, functions) =
     
     in let global_var_check svar_list var_list =
       let t = fst (fst (get_first var_list)) in
+      let _ = if t<>Int&&t<>Float&&t<>String&&t<>Bool 
+        then raise(Failure("Invalid type for global variable")) in
       let vardecs vardecs_list ((_,s), e) =
         let (map2,t2,e2) = check_expr e StringMap.empty
         in let err = "LHS type of " ^ string_of_typ t ^ " not the same as " ^
