@@ -1,0 +1,42 @@
+Void main() {
+  Pix title = new Pix();
+  title.uploadImage("/Users/frankaloia/Downloads/logo.png", 400, 100);
+  Pix logo = new Pix();
+  logo.uploadImage("/Users/frankaloia/Downloads/castle.png", 400, 300);
+
+  Placement titlePlcmt = new Placement(title, 200, 100);
+  Placement logoPlcmt = new Placement(logo, 200, 150);
+
+  Frame[] frames = new Frame[100];
+  Int i;
+  for(i=0;i<length(frames);i++) {
+     frames[i] = new Frame();
+  }
+
+  for(i=5;i<30;i++) {
+      frames[i].addPlacement(titlePlcmt); //ISSUE
+      if(i > 15) {
+        frames[i].addPlacement(logoPlcmt);
+      }
+  }
+
+  Pix p = new Pix();
+  p.uploadImage("/Users/frankaloia/Downloads/p.png", 100, 100);
+  Placement pPlcmt = new Placement(p, 50, 100);
+
+  Pix ip = new Pix();
+  ip.uploadImage("/Users/frankaloia/Downloads/i.png", 100, 100);
+  Placement iPlcmt = new Placement(ip, 150, 100);
+  
+  Pix xczar = new Pix();
+  xczar.uploadImage("/Users/frankaloia/Downloads/xczar.png", 500, 100);
+  Placement xczarPlcmt = new Placement(xczar, 250, 100);
+
+  for(i=35; i<length(frames); i++) {
+      frames[i].addPlacement(pPlcmt);
+      frames[i].addPlacement(iPlcmt);
+      frames[i].addPlacement(xczarPlcmt);
+  }
+
+  render(frames,10,800,600);
+}
