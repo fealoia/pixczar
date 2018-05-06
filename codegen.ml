@@ -114,8 +114,7 @@ let translate (globals, functions) =
              placement_t] builder in
            typ_malloc frame_t frame_struct [node] builder
       | _ -> raise(Failure("No default value for this type")) in
-
-
+      
     let rec expr builder ((m, t, e) : sexpr) = match e with
         SLiteral i -> L.const_int i32_t i
       | SStringLit st -> L.build_global_stringptr st "tmp" builder
@@ -171,7 +170,13 @@ let translate (globals, functions) =
         | Frame -> gen_default_value A.Frame builder
         | _ -> to_imp "Additional types")
       | SNewArray(t, size) -> let lt = ltype_of_typ t
-        in create_array_gen builder lt size
+        in let arr = create_array_gen builder lt size in
+        let rec fill size = (match size with
+           -1 -> ()
+         | _ -> let _ = ignore(L.build_store (gen_default_value t builder)
+           (L.build_gep arr [| (L.const_int i32_t size) |] "array_assign"
+           builder) builder) in fill (size-1)) in 
+           let _ = fill (size-1) in arr
       | SCreateArray(el) -> let e = List.hd el in let (_, t, _) = e in
          let lt = ltype_of_typ t in
          let arr = create_array_gen builder lt (List.length el)
@@ -188,7 +193,7 @@ let translate (globals, functions) =
               | _ -> L.build_sub e' (L.const_int i32_t 1) "sub" builder)
       )
       | _ -> to_imp "expression"
-
+    
     and id_gen builder id deref =
         if Hash.mem local_values id then
             let _val = Hash.find local_values id in
@@ -229,10 +234,11 @@ let translate (globals, functions) =
       L.build_pointercast arr (L.pointer_type lt) "array_cast" builder
 
     and fill_array builder arr el =
-      let array_assign idx arr_e = ignore(L.build_store (expr builder arr_e)
+      let array_assign idx arr_e = ignore(L.build_store (expr builder
+      arr_e)
       (L.build_gep arr [| (L.const_int i32_t (idx)) |] "array_assign"
         builder) builder) in
-      List.iteri array_assign el;
+      List.iteri array_assign el
 
     and llvm_int_to_int llint =
       let llint = L.int64_of_const llint in match llint with
