@@ -25,6 +25,7 @@ create() { # generate code, need to pass in file since it could be modified
     ./pixczar.native "$1" > "$filename".ll
     llc "$2".ll
     eval "$CC $LIBS -o $filename.exe $filename.s opengl/main.o"
+    echo "$filename.exe created"
 }
 
 # SCRIPT BEGINS HERE
@@ -42,7 +43,7 @@ fi
 
 if [[ "$func" == "clean" ]]
 then
-    echo "cleaning: $filename.o $filename.s $filename.exe"
+    echo "cleaning: $filename.s $filename.ll $filename.exe"
     rm "$filename".s "$filename".ll "$filename".exe
 
     include_file="$filename"_included.pxr
@@ -54,7 +55,7 @@ then
     exit 0
 fi
 
-echo "${reset}running: $file"
+echo "${reset}compiling: $file"
 
 ## following code is for handling #include
 generate_includes "$file"
@@ -64,5 +65,10 @@ then file="$(echo $file | cut -f 1 -d ".")$suffix" # use _included.pxr instead o
 fi
 ######################################
 
-outfile="$filename".out
 create "$file" "$filename"
+
+if [[ "$func" == "run" ]]
+then
+echo "running: $filename.exe"
+./"$filename".exe
+fi
