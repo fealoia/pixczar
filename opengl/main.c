@@ -1,6 +1,7 @@
 #define GLEW_STATIC
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <math.h>
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
@@ -83,8 +84,14 @@ void display_image(int x, int y, int width, int height, char *filename) {
     glEnable(GL_TEXTURE_2D);
     int img_width, img_height;
     
+    char absolutepath[1000];
+    if(realpath(filename,absolutepath) == NULL) {
+        printf("Invalid image: %s\n", filename);
+        return;
+    }
+    
     unsigned char* image =
-    SOIL_load_image(filename, &img_width, &img_height, 0, SOIL_LOAD_RGB);
+    SOIL_load_image(absolutepath, &img_width, &img_height, 0, SOIL_LOAD_RGB);
 
     if(image == NULL) {
         printf("Invalid image: %s\n", filename);
