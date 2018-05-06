@@ -2,9 +2,9 @@
 
 Void main() {
   Pix title = new Pix();
-  title.uploadImage("../images/logo.png", 400, 100);
+  title.uploadImage("images/logo.png", 400, 100);
   Pix logo = new Pix();
-  logo.uploadImage("../images/castle.png", 400, 300);
+  logo.uploadImage("images/castle.png", 400, 300);
 
   Placement titlePlcmt = new Placement(title, 200, 100);
   Placement logoPlcmt = new Placement(logo, 200, 150);
