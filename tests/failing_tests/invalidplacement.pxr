@@ -1,4 +1,4 @@
 Void main() {
   Pix test = new Pix();
-  Placement placed = new Placement(text,200,300,3,"hello");
+  Placement placed = new Placement(text,200,"yo");
 }

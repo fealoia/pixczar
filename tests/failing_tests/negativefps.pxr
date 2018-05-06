@@ -3,9 +3,9 @@ Void main() {
   	tri.makeTriangle(200,[200,200,200]);
   	Pix rect = new Pix();
 	rect.makeRectangle(100,200,[200,200,200]);
-	Placement placed = new Placement(tri,100,300,3,5);
-	Placement placed1 = new Placement(rect,200,300,3,5);
-	Placement placed2 = new Placement(tri,300,300,3,5);
+	Placement placed = new Placement(tri,100,300);
+	Placement placed1 = new Placement(rect,200,300);
+	Placement placed2 = new Placement(tri,300,300);
 	Frame[] frames = new Frame[2];
 	frames[0] = new Frame();
 	frames[1] = new Frame();

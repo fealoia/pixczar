@@ -1,0 +1,7 @@
+Void main() {
+  Int[] x = [1,2,3,4,5];
+  Int i;
+  for(i = 0; i < length(x); i++) {
+    print(x[i+1]);
+  }
+}

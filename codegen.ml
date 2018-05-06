@@ -28,7 +28,7 @@ let translate (globals, functions) =
 
   let placement_struct   = L.named_struct_type context "placement" in
     let () = L.struct_set_body placement_struct
-      [| pix_t; i32_t; i32_t; i32_t; i32_t;|] false in
+      [| pix_t; i32_t; i32_t |] false in
   let placement_t = L.pointer_type placement_struct in
   let placement_node = L.named_struct_type context "placement_node" in
   let placement_node_t = L.pointer_type placement_node in
@@ -107,7 +107,7 @@ let translate (globals, functions) =
            [zero;L.const_pointer_null str_t;zero;zero;
            L.const_pointer_null (L.pointer_type i32_t)] builder
       | A.Placement -> let pix = gen_default_value A.Pix builder in
-           typ_malloc placement_t placement_struct [pix; zero;zero;zero;zero]
+           typ_malloc placement_t placement_struct [pix; zero;zero]
            builder
       | A.Frame -> let node = typ_malloc placement_node_t placement_node
            [L.const_pointer_null placement_node_t; L.const_pointer_null

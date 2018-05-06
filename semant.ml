@@ -206,8 +206,8 @@ let check (globals, functions) =
                   if List.length args != 0 then raise (Failure (len_err 0)) else []
                 in (map, Pix, SNew(Pix, check_pix args))
             | Placement -> let check_placement args =
-                  if List.length args != 5 then raise (Failure (len_err 5)) else
-                      List.map2 check_arg [Pix; Int; Int; Int; Int] args
+                  if List.length args != 3 then raise (Failure (len_err 3)) else
+                      List.map2 check_arg [Pix; Int; Int;] args
                 in (map, Placement, SNew(Placement, check_placement args))
             | Frame     -> let check_frame args =
                   if List.length args != 0 then raise (Failure (len_err 0)) else
