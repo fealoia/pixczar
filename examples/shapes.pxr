@@ -1,0 +1,30 @@
+Void main() {
+  Int x;
+  Int[] grey = [200,200,200]; // RGB color for grey
+  Int[] red = [200,0,0]; // RGB color for red
+  Frame[] frames = new Frame[12]; // animation of 12 frames
+
+  // create 100*200 ellipse
+  Pix ellipse = new Pix();
+  ellipse.makeEllipse(100,200,grey);
+
+  // create 100*200 rectangle
+  Pix rect = new Pix();
+  rect.makeRectangle(100,200,red);
+
+  // let's have the rectangle move 50 pixels right every frame
+  for(x = 0; x < length(frames); x++) {
+    Placement placed1 = new Placement(rect,50*(x+1),100);
+    frames[x].addPlacement(placed1);
+  }
+
+  // let's have the ellipse move 50 pixels left every 2 frames
+  for(x = 0; x < length(frames); x = x + 2) {
+    Placement placed = new Placement(ellipse,700-50*(x+1),300);
+    frames[x].addPlacement(placed);
+    frames[x+1].addPlacement(placed);
+  }
+
+  print(render(frames,2,800,600)); // render on 800*600 window at 2 frames per second
+  // note render() returns an int, 0 for success, which we print to the console
+}

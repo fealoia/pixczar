@@ -1,14 +1,6 @@
 Void main() {
-   String x = "Hello World";
-   String y = "goodbye world";
-   Int sup = 1;
-   if (sup == 0){
-      print(x);
-   }
-   else if (sup == 1) {
-      print(x);
-   }
-   else {
-      print(y);
-   }
+   String s = "Hello World";
+   Int x = 123;
+   print(s);
+   print(x);
 }
