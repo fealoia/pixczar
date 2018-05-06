@@ -1,8 +1,8 @@
 Void main() {
   Pix title = new Pix();
-  title.uploadImage("/Users/frankaloia/ocaml/pixczar/images/logo.png", 400, 100);
+  title.uploadImage("images/logo.png", 400, 100);
   Pix logo = new Pix();
-  logo.uploadImage("/Users/frankaloia/ocaml/pixczar/images/castle.png", 400, 300);
+  logo.uploadImage("images/castle.png", 400, 300);
 
   Placement titlePlcmt = new Placement(title, 200, 100);
   Placement logoPlcmt = new Placement(logo, 200, 150);
@@ -21,31 +21,31 @@ Void main() {
   }
 
   Pix p = new Pix();
-  p.uploadImage("/Users/frankaloia/ocaml/pixczar/images/p.png", 100, 100);
+  p.uploadImage("images/p.png", 100, 100);
   Placement pPlcmt = new Placement(p, 50, 100);
 
   Pix ip = new Pix();
-  ip.uploadImage("/Users/frankaloia/ocaml/pixczar/images/i.png", 100, 100);
+  ip.uploadImage("images/i.png", 100, 100);
   Placement iPlcmt = new Placement(ip, 150, 100);
-  
+
   Pix x = new Pix();
-  x.uploadImage("/Users/frankaloia/ocaml/pixczar/images/x.png", 100, 100);
+  x.uploadImage("images/x.png", 100, 100);
   Placement xPlcmt = new Placement(x, 250, 100);
-  
+
   Pix c = new Pix();
-  c.uploadImage("/Users/frankaloia/ocaml/pixczar/images/c.png", 100, 100);
+  c.uploadImage("images/c.png", 100, 100);
   Placement cPlcmt = new Placement(c, 350, 100);
-  
+
   Pix z = new Pix();
-  z.uploadImage("/Users/frankaloia/ocaml/pixczar/images/z.png", 100, 100);
+  z.uploadImage("images/z.png", 100, 100);
   Placement zPlcmt = new Placement(z, 450, 100);
-  
+
   Pix a = new Pix();
-  a.uploadImage("/Users/frankaloia/ocaml/pixczar/images/a.png", 100, 100);
+  a.uploadImage("images/a.png", 100, 100);
   Placement aPlcmt = new Placement(a, 550, 100);
-  
+
   Pix r = new Pix();
-  r.uploadImage("/Users/frankaloia/ocaml/pixczar/images/r.png", 100, 100);
+  r.uploadImage("images/r.png", 100, 100);
   Placement rPlcmt = new Placement(r, 650, 100);
 
   for(i=35; i<length(frames); i++) {
