@@ -1,13 +1,14 @@
 CC = gcc -std=c99
 CFLAGS = -c -g -Wall -Wextra
-LDFLAGS = -framework GLUT -framework OpenGL -framework CoreFoundation -lsoil -lGLEW -lglfw
+
+# LINKER_FLAGS specifies the libraries we're linking against
+LINKER_FLAGS = -lGL -lglut -lGLEW -lglfw
+LINKER_FLAGS = -framework GLUT -framework OpenGL -framework CoreFoundation -lsoil -lGLEW -lglfw
 
 # COMPILER_FLAGS specifies the additional compilation options we're using
 # -Wall will turn on all standard warnings
 COMPILER_FLAGS = -Wall
 
-# LINKER_FLAGS specifies the libraries we're linking against
-LINKER_FLAGS = -lGL -lglut -lGLEW -lglfw
 all: main.o
 
 main.o: main.c
@@ -15,5 +16,3 @@ main.o: main.c
 
 clean:
 	rm main.o
-
-
