@@ -381,4 +381,8 @@ let check (globals, functions) =
       in vardecs_list :: svar_list
     
     in let globals' = List.fold_left global_var_check [] globals'
-    in (globals', List.map check_function functions)
+    in let rec move_main lst el = (match el with
+        hd :: tl -> move_main (if hd.sfname="main" then lst@[hd] else hd::lst) tl
+      | _ -> lst)
+    in let functions = List.rev (move_main [] (List.map check_function functions))
+    in (globals', functions)

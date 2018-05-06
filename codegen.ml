@@ -84,13 +84,6 @@ let translate (globals, functions) =
     let float_format_str builder = L.build_global_stringptr "%g\n" "fmt" builder in
     let bool_format_str builder = L.build_global_stringptr "%d\n" "fmt" builder in
 
-    let gen_default_value t builder = match t with
-        A.Int -> L.const_int i32_t 0
-      | A.Float -> L.const_float float_t 0.0
-      | A.Bool -> L.const_int i1_t 0
-      | A.String -> L.build_global_stringptr "" "tmp" builder
-      | _ -> raise(Failure("No default value for this type")) in
-
     let fill_struct structobj el builder =
        let store_el idx e =
            let e_p = L.build_struct_gep structobj idx "struct_build" builder
@@ -103,6 +96,21 @@ let translate (globals, functions) =
          builder in
        let () = fill_struct struct_malloc el_arr builder
        in struct_malloc in
+    
+    let gen_default_value t builder = match t with
+        A.Int -> L.const_int i32_t 0
+      | A.Float -> L.const_float float_t 0.0
+      | A.Bool -> L.const_int i1_t 0
+      | A.String -> L.build_global_stringptr "" "tmp" builder
+      | A.Pix -> let zero = L.const_int i32_t 0 in typ_malloc pix_t pix_struct
+           [zero;L.const_pointer_null str_t;zero;zero;
+           L.const_pointer_null (L.pointer_type i32_t)] builder
+      | A.Frame -> let node = typ_malloc placement_node_t placement_node
+           [L.const_pointer_null placement_node_t; L.const_pointer_null
+             placement_t] builder in
+           typ_malloc frame_t frame_struct [node] builder
+      | _ -> raise(Failure("No default value for this type")) in
+
 
     let rec expr builder ((m, t, e) : sexpr) = match e with
         SLiteral i -> L.const_int i32_t i
@@ -154,14 +162,9 @@ let translate (globals, functions) =
           hd :: tl -> to_ll ((expr builder hd) :: ll_list) tl
         | _ -> List.rev(ll_list)) in let arr = to_ll [] el in
           (match t with (*ToDo: garbage collection*)
-          Pix -> let zero = L.const_int i32_t 0 in typ_malloc pix_t pix_struct
-           [zero;L.const_pointer_null str_t;zero;zero;
-           L.const_pointer_null (L.pointer_type i32_t)] builder
+          Pix -> gen_default_value A.Pix builder
         | Placement -> typ_malloc placement_t placement_struct arr builder
-        | Frame -> let node = typ_malloc placement_node_t placement_node
-           [L.const_pointer_null placement_node_t; L.const_pointer_null
-             placement_t] builder in
-           typ_malloc frame_t frame_struct [node] builder
+        | Frame -> gen_default_value A.Frame builder
         | _ -> to_imp "Additional types")
       | SNewArray(t, size) -> let lt = ltype_of_typ t
         in create_array_gen builder lt size
