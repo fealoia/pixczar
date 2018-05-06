@@ -97,14 +97,18 @@ let translate (globals, functions) =
        let () = fill_struct struct_malloc el_arr builder
        in struct_malloc in
     
-    let gen_default_value t builder = match t with
+    let rec gen_default_value t builder = let zero = L.const_int i32_t 0 in 
+    match t with
         A.Int -> L.const_int i32_t 0
       | A.Float -> L.const_float float_t 0.0
       | A.Bool -> L.const_int i1_t 0
       | A.String -> L.build_global_stringptr "" "tmp" builder
-      | A.Pix -> let zero = L.const_int i32_t 0 in typ_malloc pix_t pix_struct
+      | A.Pix -> typ_malloc pix_t pix_struct
            [zero;L.const_pointer_null str_t;zero;zero;
            L.const_pointer_null (L.pointer_type i32_t)] builder
+      | A.Placement -> let pix = gen_default_value A.Pix builder in
+           typ_malloc placement_t placement_struct [pix; zero;zero;zero;zero]
+           builder
       | A.Frame -> let node = typ_malloc placement_node_t placement_node
            [L.const_pointer_null placement_node_t; L.const_pointer_null
              placement_t] builder in
