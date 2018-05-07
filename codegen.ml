@@ -563,7 +563,7 @@ let translate (globals, functions) =
         let free_bb = L.append_block context "free" the_function in
         let free_builder = L.builder_at_end context free_bb in
         let free block = ignore(L.build_free block free_builder) in
-       (* let _ = Stack.iter free malloc_info in*)
+        let _ = Stack.iter free malloc_info in
         let _ = ignore(L.build_ret_void free_builder) in
         let test bb = (match L.block_terminator bb with
             Some(_) -> ()
