@@ -8,7 +8,6 @@ module Hash = Hashtbl
 let local_values:(string, L.llvalue) Hash.t = Hash.create 50
 let global_values:(string, L.llvalue) Hash.t = Hash.create 50
 let array_info:(string, int) Hash.t = Hash.create 50
-let malloc_info:L.llvalue Stack.t = Stack.create ()
 
 (* Code Generation from the SAST. Returns an LLVM module if successful,
    throws an exception if something is wrong. *)
@@ -61,10 +60,6 @@ let translate (globals, functions) =
       L.var_arg_function_type i32_t [| L.pointer_type i8_t |] in
   let builtin_printf_func : L.llvalue =
      L.declare_function "printf" builtin_printf_t the_module in
-  let builtin_free_t : L.lltype =
-      L.var_arg_function_type void_t [| L.pointer_type i8_t |] in
-  let builtin_free_func : L.llvalue =
-     L.declare_function "free" builtin_free_t the_module in
   let builtin_render_t : L.lltype =
       L.var_arg_function_type i32_t [| i32_t; L.pointer_type frame_t; i32_t; i32_t;
       i32_t; |] in
@@ -97,8 +92,6 @@ let translate (globals, functions) =
 
     let typ_malloc typ_ptr typ_struct el_arr builder =
        let struct_malloc = L.build_malloc typ_struct "malloc" builder in
-       let casted = L.build_bitcast struct_malloc (L.pointer_type i8_t) "cast"
-       builder in let _ = Stack.push casted malloc_info in
        let struct_malloc = L.build_pointercast struct_malloc typ_ptr "cast"
          builder in
        let () = fill_struct struct_malloc el_arr builder
@@ -247,7 +240,6 @@ let translate (globals, functions) =
     and create_array_gen builder lt size =
       let size_arr =  L.const_int i32_t (size+1) in
       let arr = L.build_array_malloc lt size_arr "array_gen" builder in
-      (*let _ = Stack.push arr malloc_info in*)
       let arr = L.build_pointercast arr (L.pointer_type lt) "array_cast"
       builder in
       let casted = L.build_gep arr [|L.const_int i32_t 0|] "size"
@@ -547,11 +539,6 @@ let translate (globals, functions) =
       (* Build the code for each statement in the function *)
     let builder = stmt builder (StringMap.empty, SBlock fdecl.sbody) [] in
       
-    let _ = if fdecl.sfname="main" then let free block =
-      ignore(L.build_call builtin_free_func [|block|] "" builder) in
-      (*Stack.iter free malloc_info in*)
-    ignore(L.build_free (Stack.pop malloc_info) builder) in
-
     (* Add a return if the last block falls off the end *)
     add_terminal builder (match fdecl.styp with
         A.Void -> L.build_ret_void
