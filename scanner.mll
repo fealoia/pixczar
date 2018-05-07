@@ -7,7 +7,7 @@ let digits = digit+
 
 let escapes = '\\'['\\' '"' ''']
 
-let stringcharacters = [' ' '\t' '\r' '\n' 'a'-'z' 'A'-'Z' '!' '#' '%' '&'
+let stringcharacters = [' ' '\t' '\r' '\n' 'a'-'z' 'A'-'Z' '0'-'9' '!' '#' '%' '&'
 '(' ')' '*' '+' ',' '-' '.' '/' ':' ';' '<' '=' '>' '?' '[' ']' '^' '_'
 '{' '|' '}' '~'] | escapes
 
