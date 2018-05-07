@@ -97,6 +97,18 @@ let translate (globals, functions) =
        let () = fill_struct struct_malloc el_arr builder
        in struct_malloc in
     
+    let create_array_gen builder lt size =
+      let size_arr =  L.const_int i32_t (size+1) in
+      let arr = L.build_array_malloc lt size_arr "array_gen" builder in
+      let arr = L.build_pointercast arr (L.pointer_type lt) "array_cast"
+      builder in
+      let casted = L.build_gep arr [|L.const_int i32_t 0|] "size"
+        builder in
+      let casted = L.build_pointercast casted (L.pointer_type i32_t) "cast"
+      builder in
+      let _ = ignore(L.build_store (L.const_int i32_t size)
+      casted builder) in arr in
+    
     let rec gen_default_value t builder = let zero = L.const_int i32_t 0 in 
     match t with
         A.Int -> L.const_int i32_t 0
@@ -113,6 +125,7 @@ let translate (globals, functions) =
            [L.const_pointer_null placement_node_t; L.const_pointer_null
              placement_t] builder in
            typ_malloc frame_t frame_struct [node] builder
+      | A.Array(typ,_) -> create_array_gen builder (ltype_of_typ typ) 0
       | _ -> raise(Failure("No default value for this type")) in
       
     let rec expr builder ((m, t, e) : sexpr) = match e with
@@ -236,18 +249,6 @@ let translate (globals, functions) =
         | _ -> raise(Failure("Unable to assign " ^ string_of_sexpr se1 ^ " to "
                              ^ string_of_sexpr se2))) in
       rhs
-
-    and create_array_gen builder lt size =
-      let size_arr =  L.const_int i32_t (size+1) in
-      let arr = L.build_array_malloc lt size_arr "array_gen" builder in
-      let arr = L.build_pointercast arr (L.pointer_type lt) "array_cast"
-      builder in
-      let casted = L.build_gep arr [|L.const_int i32_t 0|] "size"
-        builder in
-      let casted = L.build_pointercast casted (L.pointer_type i32_t) "cast"
-      builder in
-      let _ = ignore(L.build_store (L.const_int i32_t size)
-      casted builder) in arr
 
     and fill_array builder arr el =
       let array_assign idx arr_e = ignore(L.build_store (expr builder
