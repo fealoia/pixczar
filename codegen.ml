@@ -95,9 +95,8 @@ let translate (globals, functions) =
            in ignore(L.build_store e e_p builder)
        in List.iteri store_el el in
 
-    let typ_malloc typ_ptr typ_struct el_arr str func builder =
-       let mbuilder = L.builder_at_end context (L.entry_block func) in
-       let struct_malloc = L.build_malloc typ_struct str mbuilder in
+    let typ_malloc typ_ptr typ_struct el_arr str builder =
+       let struct_malloc = L.build_malloc typ_struct str builder in
        let casted = L.build_bitcast struct_malloc (L.pointer_type i8_t)
         "cast"
        builder in let _ = Stack.push casted malloc_info in
@@ -106,7 +105,7 @@ let translate (globals, functions) =
        let () = fill_struct struct_malloc el_arr builder
        in struct_malloc in
     
-    let rec gen_default_value t func builder = let zero = L.const_int i32_t 0 in 
+    let rec gen_default_value t builder = let zero = L.const_int i32_t 0 in 
     match t with
         A.Int -> L.const_int i32_t 0
       | A.Float -> L.const_float float_t 0.0
@@ -114,14 +113,14 @@ let translate (globals, functions) =
       | A.String -> L.build_global_stringptr "" "tmp" builder
       | A.Pix -> typ_malloc pix_t pix_struct
            [zero;L.const_pointer_null str_t;zero;zero;
-           L.const_pointer_null (L.pointer_type i32_t)] "pix" func builder
-      | A.Placement -> let pix = gen_default_value A.Pix func builder in
-      typ_malloc placement_t placement_struct [pix; zero;zero] "placement" func
+           L.const_pointer_null (L.pointer_type i32_t)] "pix" builder
+      | A.Placement -> let pix = gen_default_value A.Pix builder in
+      typ_malloc placement_t placement_struct [pix; zero;zero] "placement"
            builder
       | A.Frame -> let node = typ_malloc placement_node_t placement_node
            [L.const_pointer_null placement_node_t; L.const_pointer_null
-             placement_t] "placement" func builder in
-           typ_malloc frame_t frame_struct [node] "frame" func builder
+             placement_t] "placement" builder in
+           typ_malloc frame_t frame_struct [node] "frame" builder
       | _ -> raise(Failure("No default value for this type")) in
       
     let rec expr builder ((m, t, e) : sexpr) = match e with
@@ -180,16 +179,16 @@ let translate (globals, functions) =
           hd :: tl -> to_ll ((expr builder hd) :: ll_list) tl
         | _ -> List.rev(ll_list)) in let arr = to_ll [] el in
           (match t with (*ToDo: garbage collection*)
-          Pix -> gen_default_value A.Pix the_function builder
+          Pix -> gen_default_value A.Pix builder
         | Placement -> typ_malloc placement_t placement_struct arr "placement"
-        func builder
-        | Frame -> gen_default_value A.Frame the_function builder
+        builder
+        | Frame -> gen_default_value A.Frame builder
         | _ -> to_imp "Additional types")
       | SNewArray(t, size) -> let lt = ltype_of_typ t in
         let arr = create_array_gen builder lt size in
         let rec fill size = (match size with
            0 -> ()
-         | _ -> let _ = ignore(L.build_store (gen_default_value t the_function builder)
+         | _ -> let _ = ignore(L.build_store (gen_default_value t builder)
            (L.build_gep arr [| (L.const_int i32_t size) |] "array_assign"
            builder) builder) in fill (size-1)) in 
            let _ = fill (size) in arr
@@ -471,7 +470,7 @@ let translate (globals, functions) =
              let pnode_ptr = L.build_struct_gep frame 0 "add_plcmt" builder in
              let prev_node = L.build_load pnode_ptr "node" builder in
              let node = typ_malloc placement_node_t placement_node
-               [prev_node; placement] "placement" func builder in
+               [prev_node; placement] "placement" builder in
              let _ = ignore(L.build_store node pnode_ptr builder) in
              builder
          | "clearPlacements" -> let frame = expr builder e in
