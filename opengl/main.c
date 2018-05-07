@@ -152,6 +152,7 @@ int render(int numFrames, frame *frames[], int fps, int width, int height) {
     double spf = 1.0/fps;
     double lastDrawTime = glfwGetTime();
 
+    //ToDo: your shit new
     int i;
     for(i=1; i<numFrames; i++) {
         if(glfwWindowShouldClose(window)) break;
