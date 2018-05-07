@@ -95,16 +95,18 @@ let translate (globals, functions) =
            in ignore(L.build_store e e_p builder)
        in List.iteri store_el el in
 
-    let typ_malloc typ_ptr typ_struct el_arr builder =
-       let struct_malloc = L.build_malloc typ_struct "malloc" builder in
-       let casted = L.build_bitcast struct_malloc (L.pointer_type i8_t) "cast"
+    let typ_malloc typ_ptr typ_struct el_arr str func builder =
+       let mbuilder = L.builder_at_end context (L.entry_block func) in
+       let struct_malloc = L.build_malloc typ_struct str mbuilder in
+       let casted = L.build_bitcast struct_malloc (L.pointer_type i8_t)
+        "cast"
        builder in let _ = Stack.push casted malloc_info in
-       let struct_malloc = L.build_pointercast struct_malloc typ_ptr "cast"
+      let struct_malloc = L.build_pointercast struct_malloc typ_ptr "cast"
          builder in
        let () = fill_struct struct_malloc el_arr builder
        in struct_malloc in
     
-    let rec gen_default_value t builder = let zero = L.const_int i32_t 0 in 
+    let rec gen_default_value t func builder = let zero = L.const_int i32_t 0 in 
     match t with
         A.Int -> L.const_int i32_t 0
       | A.Float -> L.const_float float_t 0.0
@@ -112,14 +114,14 @@ let translate (globals, functions) =
       | A.String -> L.build_global_stringptr "" "tmp" builder
       | A.Pix -> typ_malloc pix_t pix_struct
            [zero;L.const_pointer_null str_t;zero;zero;
-           L.const_pointer_null (L.pointer_type i32_t)] builder
-      | A.Placement -> let pix = gen_default_value A.Pix builder in
-           typ_malloc placement_t placement_struct [pix; zero;zero]
+           L.const_pointer_null (L.pointer_type i32_t)] "pix" func builder
+      | A.Placement -> let pix = gen_default_value A.Pix func builder in
+      typ_malloc placement_t placement_struct [pix; zero;zero] "placement" func
            builder
       | A.Frame -> let node = typ_malloc placement_node_t placement_node
            [L.const_pointer_null placement_node_t; L.const_pointer_null
-             placement_t] builder in
-           typ_malloc frame_t frame_struct [node] builder
+             placement_t] "placement" func builder in
+           typ_malloc frame_t frame_struct [node] "frame" func builder
       | _ -> raise(Failure("No default value for this type")) in
       
     let rec expr builder ((m, t, e) : sexpr) = match e with
@@ -178,15 +180,16 @@ let translate (globals, functions) =
           hd :: tl -> to_ll ((expr builder hd) :: ll_list) tl
         | _ -> List.rev(ll_list)) in let arr = to_ll [] el in
           (match t with (*ToDo: garbage collection*)
-          Pix -> gen_default_value A.Pix builder
-        | Placement -> typ_malloc placement_t placement_struct arr builder
-        | Frame -> gen_default_value A.Frame builder
+          Pix -> gen_default_value A.Pix the_function builder
+        | Placement -> typ_malloc placement_t placement_struct arr "placement"
+        func builder
+        | Frame -> gen_default_value A.Frame the_function builder
         | _ -> to_imp "Additional types")
       | SNewArray(t, size) -> let lt = ltype_of_typ t in
         let arr = create_array_gen builder lt size in
         let rec fill size = (match size with
            0 -> ()
-         | _ -> let _ = ignore(L.build_store (gen_default_value t builder)
+         | _ -> let _ = ignore(L.build_store (gen_default_value t the_function builder)
            (L.build_gep arr [| (L.const_int i32_t size) |] "array_assign"
            builder) builder) in fill (size-1)) in 
            let _ = fill (size) in arr
@@ -246,9 +249,10 @@ let translate (globals, functions) =
 
     and create_array_gen builder lt size =
       let size_arr =  L.const_int i32_t (size+1) in
-      let arr = L.build_array_malloc lt size_arr "array_gen" builder in
-      (*let _ = Stack.push arr malloc_info in*)
-      let arr = L.build_pointercast arr (L.pointer_type lt) "array_cast"
+      let arr = L.build_array_malloc lt size_arr (L.string_of_lltype lt) builder in
+      let _ = Stack.push arr malloc_info in
+      let arr = L.build_pointercast arr (L.pointer_type lt) (L.string_of_lltype
+      lt)
       builder in
       let casted = L.build_gep arr [|L.const_int i32_t 0|] "size"
         builder in
@@ -432,12 +436,12 @@ let translate (globals, functions) =
         let pred_bb = L.append_block context "while" the_function in
               (* In current block, branch to predicate to execute the condition *)
         let _ = L.build_br pred_bb builder in
-        let merge_bb = L.append_block context "merge" the_function in
 
               (* Create the body's block, generate the code for it, and add a branch
               back to the predicate block (we always jump back at the end of a while
               loop's body, unless we returned or something) *)
         let body_bb = L.append_block context "while_body" the_function in
+        let merge_bb = L.append_block context "merge" the_function in
          let while_builder = stmt (L.builder_at_end context body_bb) body
               ((pred_bb, merge_bb) :: loop_list) in
          let () = add_terminal while_builder (L.build_br pred_bb) in
@@ -467,7 +471,7 @@ let translate (globals, functions) =
              let pnode_ptr = L.build_struct_gep frame 0 "add_plcmt" builder in
              let prev_node = L.build_load pnode_ptr "node" builder in
              let node = typ_malloc placement_node_t placement_node
-               [prev_node; placement] builder in
+               [prev_node; placement] "placement" func builder in
              let _ = ignore(L.build_store node pnode_ptr builder) in
              builder
          | "clearPlacements" -> let frame = expr builder e in
@@ -508,19 +512,18 @@ let translate (globals, functions) =
       let if_bb = L.append_block context "if" the_function in
       let () = add_terminal builder (L.build_br if_bb) in
 
-      let merge_bb = L.append_block context "merge" the_function in
-      let branch_instr = L.build_br merge_bb in
-
       let then_bb = L.append_block context "then" the_function in
       let then_builder = stmt (L.builder_at_end context then_bb) then_stmt
         loop_list in
+      let merge_bb = L.append_block context "merge" the_function in
+      let branch_instr = L.build_br merge_bb in
       let () = add_terminal then_builder branch_instr in
 
       let else_bb = L.append_block context "else" the_function in
       let else_builder = stmt (L.builder_at_end context else_bb) else_stmt
         loop_list in
       let () = add_terminal else_builder branch_instr in
-
+      
       let rec elseif_bb_gen elseif_list bool_val pred_bb body_bb loop_list = match elseif_list with
            (_, SElseIf(pred, body)) :: tl ->
              let elseif_pred_val = expr (L.builder_at_end context pred_bb) pred in
@@ -546,13 +549,8 @@ let translate (globals, functions) =
     in
       (* Build the code for each statement in the function *)
     let builder = stmt builder (StringMap.empty, SBlock fdecl.sbody) [] in
-      
-    let _ = if fdecl.sfname="main" then let free block =
-      ignore(L.build_call builtin_free_func [|block|] "" builder) in
-      (*Stack.iter free malloc_info in*)
-    ignore(L.build_free (Stack.pop malloc_info) builder) in
-
-    (* Add a return if the last block falls off the end *)
+    
+    if fdecl.sfname<>"main" then
     add_terminal builder (match fdecl.styp with
         A.Void -> L.build_ret_void
       | A.Float -> L.build_ret (L.const_float float_t 0.0)
@@ -560,4 +558,17 @@ let translate (globals, functions) =
       | A.Bool -> L.build_ret (L.const_int i1_t 0)
       | t -> L.build_ret (L.const_pointer_null (ltype_of_typ t)))
 
-    in List.iter build_function_body functions; the_module
+    in List.iter build_function_body functions;
+    
+        let (the_function, _) = StringMap.find "main" function_decls in
+        let free_bb = L.append_block context "free" the_function in
+        let free_builder = L.builder_at_end context free_bb in
+        let free block = ignore(L.build_free block free_builder) in
+       (* let _ = Stack.iter free malloc_info in*)
+        let _ = ignore(L.build_ret_void free_builder) in
+        let test bb = (match L.block_terminator bb with
+            Some(_) -> ()
+          | _ -> ignore(L.build_br free_bb (L.builder_at_end context bb))) in
+        let _ = L.iter_blocks test the_function in
+
+        the_module
