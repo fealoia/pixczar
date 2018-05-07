@@ -2,9 +2,9 @@
 
 Void main() {
   Pix title = new Pix();
-  title.uploadImage("../images/logo.png", 400, 100);
+  title.uploadImage("images/logo.png", 400, 100);
   Pix logo = new Pix();
-  logo.uploadImage("../images/castle.png", 400, 300);
+  logo.uploadImage("images/castle.png", 400, 300);
 
   Placement titlePlcmt = new Placement(title, 200, 100);
   Placement logoPlcmt = new Placement(logo, 200, 150);
@@ -23,46 +23,46 @@ Void main() {
   }
 
   Pix p = new Pix();
-  p.uploadImage("../images/p.png", 70, 100);
+  p.uploadImage("images/p.png", 100, 100);
   Placement pPlcmt = new Placement(p, 20, 200);
 
   Pix ip = new Pix();
-  ip.uploadImage("../images/i.png", 70, 100);
+  ip.uploadImage("images/i.png", 100, 100);
   Placement iPlcmt = new Placement(ip, 130, 200);
 
   Pix x = new Pix();
-  x.uploadImage("../images/x.png", 70, 100);
+  x.uploadImage("images/x.png", 100, 100);
   Placement xPlcmt = new Placement(x, 240, 200);
 
   Pix c = new Pix();
-  c.uploadImage("../images/c.png", 70, 100);
+  c.uploadImage("images/c.png", 100, 100);
   Placement cPlcmt = new Placement(c, 350, 200);
 
   Pix z = new Pix();
-  z.uploadImage("../images/z.png", 70, 100);
+  z.uploadImage("images/z.png", 100, 100);
   Placement zPlcmt = new Placement(z, 460, 200);
 
   Pix a = new Pix();
-  a.uploadImage("../images/a.png", 70, 100);
+  a.uploadImage("images/a.png", 100, 100);
   Placement aPlcmt = new Placement(a, 570, 200);
 
   Pix r = new Pix();
-  r.uploadImage("../images/r.png", 70, 100);
+  r.uploadImage("images/r.png", 100, 100);
   Placement rPlcmt = new Placement(r, 680, 200);
-  
+
   Pix lamp_left = new Pix();
-  lamp_left.uploadImage("../images/lamp_left.png", 50, 50);
-   
+  lamp_left.uploadImage("images/lamp_left.png", 50, 50);
+
   keyFrame(frames,50,lamp_left,[800,200],[750,200],5);
   Placement current = new Placement(lamp_left, 750, 200);
   fillFrames(frames, current, 55, 65);
   Int[] proj = projectile(frames, 65, lamp_left, -10, 750, 200, 350, -50);
   Int t = 0, width = 1;
-  
+
   current = new Placement(lamp_left, proj[width], 350);
 //  fillFrames(frames, current, proj[t], proj[t]+2);
   projectile(frames, proj[t], lamp_left, -5, proj[width], 350, 200, 18);
-  
+
   for(i=35; i<length(frames); i++) {
       frames[i].addPlacement(pPlcmt);
       frames[i].addPlacement(iPlcmt);
@@ -73,6 +73,6 @@ Void main() {
       frames[i].addPlacement(rPlcmt);
 
   }
-  
+
   render(frames,10,800,600);
 }
