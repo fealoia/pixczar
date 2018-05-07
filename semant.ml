@@ -277,10 +277,15 @@ let check (globals, functions) =
           (loop_count + 1)))
       | While(p, s) -> (map, SWhile(check_expr p map, check_stmt s map func
           (loop_count + 1)))
-      | Return e -> let (map, t, e') = check_expr e map in
-        if t = func.typ then (map, SReturn (map, t, e'))
-        else raise (
-          Failure ("return gives " ^ string_of_typ t ^ " expected " ^
+      | Return e -> let match_arrs t1 t2 = (match t1 with
+           Array(ta1,_) -> (match t2 with
+              Array(ta2,_) when ta1=ta2 -> true
+             |_ -> false)
+         | _ -> false) in
+         let (map, t, e') = check_expr e map in
+         if t = func.typ || match_arrs t func.typ then (map, SReturn (map, t, e'))
+         else raise (
+            Failure ("return gives " ^ string_of_typ t ^ " expected " ^
                    string_of_typ func.typ ^ " in " ^ string_of_expr e))
 
 	    (* A block is correct if each statement is correct and nothing

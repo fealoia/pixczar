@@ -51,17 +51,17 @@ Void main() {
   Placement rPlcmt = new Placement(r, 680, 200);
   
   Pix lamp_left = new Pix();
-  lamp_left.uploadImage("../images/lamp_left.png", 100, 100);
+  lamp_left.uploadImage("../images/lamp_left.png", 50, 50);
    
-  keyFrame(frames,50,lamp_left,[800,200],[735,200],5);
-  Placement current = new Placement(lamp_left, 735, 200);
+  keyFrame(frames,50,lamp_left,[800,200],[750,200],5);
+  Placement current = new Placement(lamp_left, 750, 200);
   fillFrames(frames, current, 55, 65);
-  Int[] proj = projectile(frames, 65, lamp_left, -10, 735, 200, 350, -50);
+  Int[] proj = projectile(frames, 65, lamp_left, -10, 750, 200, 350, -50);
   Int t = 0, width = 1;
   
   current = new Placement(lamp_left, proj[width], 350);
 //  fillFrames(frames, current, proj[t], proj[t]+2);
-  projectile(frames, proj[t], lamp_left, -5, proj[width], 350, 200, 20);
+  projectile(frames, proj[t], lamp_left, -5, proj[width], 350, 200, 18);
   
   for(i=35; i<length(frames); i++) {
       frames[i].addPlacement(pPlcmt);

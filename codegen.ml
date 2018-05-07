@@ -226,7 +226,10 @@ let translate (globals, functions) =
           A.Null -> L.const_null (ltype_of_typ t2)
         | _ -> rhs) in
       let _ = (match e1 with
-          SId id -> let lhs = id_gen builder id false in
+          SId id -> let _ = (match e2 with 
+             SCreateArray(el) -> ignore(Hash.add array_info id (List.length el))
+           | SNewArray(_,s) -> ignore(Hash.add array_info id s)
+           | _ -> ()) in let lhs = id_gen builder id false in
             ignore(L.build_store rhs lhs builder)
         | SAccessArray(name, idx) -> let lhs = access_array_gen builder name idx
             true in ignore(L.build_store rhs lhs builder)
