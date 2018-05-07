@@ -38,7 +38,7 @@ Int[] projectile(Frame[] frames, Int start, Pix obj, Int xSpeed, Int width,
    for(i=0; (height > endHeight && gravity > 0) || (height < endHeight && gravity < 0); i++) {
       height = height - d;
 
-      if(i < length(frames)) {
+      if(i+start < length(frames)) {
         frames[i+start].addPlacement(new Placement(obj, width + i*xSpeed, height));
       } else {
         break;
