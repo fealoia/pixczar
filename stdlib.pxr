@@ -29,19 +29,21 @@ Int accelerationDistance(Int t, Int a) {
   return half * t * t;
 }
 
-Void projectile(Frame[] frames, Pix obj, Int xSpeed, Int width, 
-        Int height, Int gravity) {
+Int[] projectile(Frame[] frames, Int start, Pix obj, Int xSpeed, Int width, 
+        Int height, Int endHeight, Int gravity) {
     //g in pixel/frame^2
     Int d = accelerationDistance(1, gravity);
 
    Int i;
-   for(i=0; d < height; i++) {
+   for(i=0; (height > endHeight && gravity > 0) || (height < endHeight && gravity < 0); i++) {
       height = height - d;
 
       if(i < length(frames)) {
-        frames[i].addPlacement(new Placement(obj, width + i*xSpeed, height));
+        frames[i+start].addPlacement(new Placement(obj, width + i*xSpeed, height));
       } else {
         break;
       }
-   } 
+   }
+   
+   return [i+start, width + (i-1)*xSpeed];
 }
