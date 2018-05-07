@@ -81,6 +81,9 @@ void display_ellipse(int x, int y, int width, int height, int rgb[]) {
 }
 
 void display_image(int x, int y, int width, int height, char *filename) {
+    glColor3f(1.0, 1.0, 1.0);
+    glEnable (GL_BLEND);
+    glBlendFunc (GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
     glEnable(GL_TEXTURE_2D);
     int img_width, img_height;
     
@@ -114,6 +117,7 @@ void display_image(int x, int y, int width, int height, char *filename) {
 
     glEnd();
     glDisable(GL_TEXTURE_2D);
+    glDisable(GL_BLEND);
 
     SOIL_free_image_data(image);
 }
