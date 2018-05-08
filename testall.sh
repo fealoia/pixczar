@@ -15,7 +15,7 @@ CC="clang"
 os=`uname`
 if [[ "$os" == "Darwin" ]]
 then
-  LIBS="-framework GLUT -framework OpenGL -framework CoreFoundation -lsoil -lGLEW -lglfw"
+  LIBS="-framework GLUT -framework OpenGL -framework CoreFoundation -lGLEW -lglfw"
 elif [[ "$os" == "Linux" ]]
 then
   LIBS="-lGL -lglut -lGLEW -lglfw -lm -L./openGL -lSOIL"
