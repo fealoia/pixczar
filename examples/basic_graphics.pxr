@@ -8,12 +8,12 @@ Void main() {
   el.makeEllipse(100,200,arr);
   Pix text = new Pix();
   text.uploadImage("images/shrek.png",200,200);
-  Placement placed = new Placement(el,100,300,3,5);
-  Placement placed1 = new Placement(text,200,300,3,5);
-  Placement placed2 = new Placement(test,300,300,3,5);
-  Placement placed3 = new Placement(rect,400,300,3,5);
-  Placement placed4 = new Placement(test,500,300,3,5);
-  Placement placed5 = new Placement(test,600,300,3,5);
+  Placement placed = new Placement(el,100,300);
+  Placement placed1 = new Placement(text,200,300);
+  Placement placed2 = new Placement(test,300,300);
+  Placement placed3 = new Placement(rect,400,300);
+  Placement placed4 = new Placement(test,500,300);
+  Placement placed5 = new Placement(test,600,300);
   Frame[] frames = new Frame[6];
   frames[0] = new Frame();
   frames[1] = new Frame();
