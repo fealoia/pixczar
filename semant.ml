@@ -64,7 +64,8 @@ let check (globals, functions) =
     and make_err er = raise (Failure er)
     and n = fd.fname (* Name of the function *)
     in match fd with (* No duplicate functions or redefinitions of built-ins *)
-         _ when StringMap.mem n built_in_decls -> make_err built_in_err
+         _ when n="check_access" -> raise(Failure("check_access is a keyword."))
+       | _ when StringMap.mem n built_in_decls -> make_err built_in_err
        | _ when StringMap.mem n map -> make_err dup_err
        | _ ->  StringMap.add n fd map
   in
