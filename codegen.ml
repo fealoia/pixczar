@@ -340,6 +340,9 @@ let translate (globals, functions) =
                 A.Sub, (m, t, SLiteral(1)))) in unop_lval
           | _ -> let _ = L.build_sub unop_lval (L.const_int i32_t 1) "add" builder
              in unop_lval)
+        | A.IntCast, A.Float -> L.build_fptosi unop_lval i32_t "cast" builder
+
+        | A.IntCast, A.Int -> unop_lval
         | _ -> raise(Failure("Unsupported unop for " ^ A.string_of_uop unop ^
           " and type " ^ A.string_of_typ t))
         in

@@ -129,6 +129,7 @@ let check (globals, functions) =
             Neg when t = Int || t = Float -> t
           | Not when t = Bool -> Bool
           | PreIncrement | PreDecrement when t = Int -> Int
+          | IntCast when t = Float || t=Int -> Int
           | _ -> raise (Failure ("illegal unary operator " ^
                                  string_of_uop op ^ string_of_typ t ^
                                  " in " ^ string_of_expr ex))

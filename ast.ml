@@ -1,7 +1,7 @@
 type op = Add | Sub | Mult | Div | Equal | Neq | Less | Leq | Greater | Geq |
           And | Or | Mod
 
-type uop = Neg | Not | PreIncrement | PreDecrement
+type uop = Neg | Not | PreIncrement | PreDecrement | IntCast
 
 type post_uop = PostIncrement | PostDecrement
 
@@ -76,6 +76,7 @@ let string_of_uop = function
   | Not -> "!"
   | PreIncrement -> "++"
   | PreDecrement -> "--"
+  | IntCast -> "~"
 
 let string_of_post_uop = function
     PostIncrement-> "++"
