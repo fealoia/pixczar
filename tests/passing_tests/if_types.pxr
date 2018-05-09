@@ -1,0 +1,26 @@
+Void main() {
+  Boolean x, y;
+  x = true;
+  y = true;
+  if(x == y) {
+    print("true expression");
+  }
+  if(x != y) {
+    print("false expression");
+  }
+  if(1){
+    print("Int");
+  }
+  if(1.0){
+    print("Float");
+  }
+  if("s"){
+    print("String");
+  }
+  if(new Pix()){
+    print("Pix");
+  }
+  if(null){
+    print("null");
+  }
+}

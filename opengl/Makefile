@@ -3,7 +3,7 @@ CFLAGS = -c -g -Wall -Wextra
 
 # LINKER_FLAGS specifies the libraries we're linking against
 LINKER_FLAGS = -lGL -lglut -lGLEW -lglfw
-LINKER_FLAGS = -framework GLUT -framework OpenGL -framework CoreFoundation -lsoil -lGLEW -lglfw
+LINKER_FLAGS = -framework GLUT -framework OpenGL -framework CoreFoundation -lGLEW -lglfw
 
 # COMPILER_FLAGS specifies the additional compilation options we're using
 # -Wall will turn on all standard warnings
