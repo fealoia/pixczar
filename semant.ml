@@ -391,5 +391,8 @@ let check (globals, functions) =
     in let rec move_main lst el = (match el with
         hd :: tl -> move_main (if hd.sfname="main" then lst@[hd] else hd::lst) tl
       | _ -> lst)
-    in let functions = List.rev (move_main [] (List.map check_function functions))
+    in let functions =
+        {styp=Void;sfname="check_access";sformals=[(Int,"idx");(Int,"size")];slocals=[];sbody=[]} ::
+            (List.map check_function functions)
+    in let functions = List.rev (move_main [] functions)
     in (globals', functions)

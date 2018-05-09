@@ -56,6 +56,10 @@ let translate (globals, functions) =
   in
 
   (* declare built-in functions *)
+  let builtin_exit_t : L.lltype =
+      L.var_arg_function_type void_t [||] in
+  let builtin_exit_func : L.llvalue =
+     L.declare_function "exit" builtin_exit_t the_module in
   let builtin_printf_t : L.lltype =
       L.var_arg_function_type i32_t [| L.pointer_type i8_t |] in
   let builtin_printf_func : L.llvalue =
@@ -273,6 +277,11 @@ let translate (globals, functions) =
           (if int_index < 0 || int_index >= int_size
             then raise(Failure("Illegal index")))
         | _ -> ()) in
+      let (check,_) = StringMap.find "check_access" function_decls in
+      let size = L.build_gep arr [| L.const_int i32_t 0 |] "size" builder in
+      let size = L.build_pointercast size (L.pointer_type i32_t) "cast" builder in
+      let size = L.build_load size "size" builder in
+      let _ = L.build_call check [|index; size|] "" builder in
       let index = L.build_add index (L.const_int i32_t 1) "add" builder in
       let arr_val = L.build_gep arr [| index |] "arr_access" builder in
       if is_assign then arr_val
@@ -396,6 +405,22 @@ let translate (globals, functions) =
          | _ -> ()) in
        ignore(Hash.add local_values s alloca) in
      let _ = List.iteri func_params fdecl.sformals in
+    
+     let _ = (if fdecl.sfname="check_access" then
+      let checked_block = L.append_block context "checked" the_function in
+      let _ = L.build_ret_void (L.builder_at_end context checked_block) in
+      let exit_block = L.append_block context "exit" the_function in
+      let exit_block_b = L.builder_at_end context exit_block in
+      let str = L.build_global_stringptr "Throwing Runtime Error: Out of Bound Array Access" "tmp" builder in
+      let _ = L.build_call builtin_printf_func [| string_format_str builder ;
+          str|] "printf" exit_block_b in 
+      let _ = L.build_call builtin_exit_func [||] "" exit_block_b in
+      let _ = L.build_ret_void exit_block_b in
+      
+      let idx = L.param the_function 0 in
+      let size = L.param the_function 1 in
+      let cmp = L.build_icmp L.Icmp.Sgt size idx "tmp" builder in
+      ignore(L.build_cond_br cmp checked_block exit_block builder)) in
 
     (* Each basic block in a program ends with a "terminator" instruction i.e.
     one that ends the basic block. By definition, these instructions must
@@ -407,10 +432,10 @@ let translate (globals, functions) =
                            (* The current block where we're inserting instr *)
       match L.block_terminator (L.insertion_block builder) with
         Some _ -> ()
-      | None -> ignore (instr builder) in
-(*
-  This function generates code for statements
-*)
+      | None -> (match instr with 
+          Some(instr) -> ignore (instr builder)
+        | None -> raise(Failure("No default return value for this type"))) in
+    
     let rec stmt builder (map, ss) loop_list = match ss with
         SExpr e -> let _ = expr builder e in builder
       | SBlock sl -> let stmt_block builder s = stmt builder s loop_list in
@@ -433,7 +458,7 @@ let translate (globals, functions) =
         let body_bb = L.append_block context "while_body" the_function in
          let while_builder = stmt (L.builder_at_end context body_bb) body
               ((pred_bb, merge_bb) :: loop_list) in
-         let () = add_terminal while_builder (L.build_br pred_bb) in
+         let () = add_terminal while_builder (Some(L.build_br pred_bb)) in
               (* Generate the predicate code in the predicate block *)
         let pred_builder = L.builder_at_end context pred_bb in
         let bool_val = bool_pred_gen pred_builder predicate in
@@ -449,10 +474,10 @@ let translate (globals, functions) =
       | SIf (predicate, then_stmt, elseif_stmts, else_stmt) ->
               if_gen builder predicate then_stmt elseif_stmts else_stmt loop_list
       | SElseIf (_, _) -> raise(Failure("Should never reach SElseIf"))
-      | SBreak -> let () = add_terminal builder (L.build_br (snd (List.hd
-      loop_list))) in builder
-      | SContinue -> let () = add_terminal builder (L.build_br (fst (List.hd
-      loop_list))) in builder
+      | SBreak -> let () = add_terminal builder (Some(L.build_br (snd (List.hd
+      loop_list)))) in builder
+      | SContinue -> let () = add_terminal builder (Some (L.build_br (fst (List.hd
+      loop_list)))) in builder
       | SObjCall(e, name, el) -> let build_expr_list expr_list e =
           (expr builder e) :: expr_list in (match name with
           "addPlacement" -> let frame = expr builder e in
@@ -499,7 +524,7 @@ let translate (globals, functions) =
     and if_gen builder predicate then_stmt elseif_stmts else_stmt loop_list =
       let if_bool_val = bool_pred_gen builder predicate in
       let if_bb = L.append_block context "if" the_function in
-      let () = add_terminal builder (L.build_br if_bb) in
+      let () = add_terminal builder (Some (L.build_br if_bb)) in
 
       let merge_bb = L.append_block context "merge" the_function in
       let branch_instr = L.build_br merge_bb in
@@ -507,12 +532,12 @@ let translate (globals, functions) =
       let then_bb = L.append_block context "then" the_function in
       let then_builder = stmt (L.builder_at_end context then_bb) then_stmt
         loop_list in
-      let () = add_terminal then_builder branch_instr in
+      let () = add_terminal then_builder (Some branch_instr) in
 
       let else_bb = L.append_block context "else" the_function in
       let else_builder = stmt (L.builder_at_end context else_bb) else_stmt
         loop_list in
-      let () = add_terminal else_builder branch_instr in
+      let () = add_terminal else_builder (Some branch_instr) in
 
       let rec elseif_bb_gen elseif_list bool_val pred_bb body_bb loop_list = match elseif_list with
            (_, SElseIf(pred, body)) :: tl ->
@@ -522,7 +547,7 @@ let translate (globals, functions) =
              let elseif_body_bb = L.append_block context "elseif_body" the_function in
              let elseif_builder = stmt (L.builder_at_end context elseif_body_bb)
                body loop_list in
-             let () = add_terminal elseif_builder branch_instr in
+             let () = add_terminal elseif_builder (Some branch_instr) in
 
              let _ = L.build_cond_br bool_val body_bb elseif_pred_bb
                 (L.builder_at_end context pred_bb)
@@ -542,10 +567,10 @@ let translate (globals, functions) =
       
     (* Add a return if the last block falls off the end *)
     add_terminal builder (match fdecl.styp with
-        A.Void -> L.build_ret_void
-      | A.Float -> L.build_ret (L.const_float float_t 0.0)
-      | A.Int -> L.build_ret (L.const_int i32_t 0)
-      | A.Bool -> L.build_ret (L.const_int i1_t 0)
-      | t -> L.build_ret (gen_default_value t builder))
+        A.Void -> (Some L.build_ret_void)
+      | A.Float -> (Some (L.build_ret (L.const_float float_t 0.0)))
+      | A.Int -> (Some (L.build_ret (L.const_int i32_t 0)))
+      | A.Bool -> (Some (L.build_ret (L.const_int i1_t 0)))
+      | t -> None)
 
     in List.iter build_function_body functions; the_module
