@@ -1,0 +1,6 @@
+Void main() {
+  Int[] y= new Int[4];
+  Int x = 4;
+  y[x];
+}
+
