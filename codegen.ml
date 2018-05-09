@@ -215,7 +215,6 @@ let translate (globals, functions) =
                 assign_gen builder e (m, t, SBinop(e, A.Sub, (m, t, SLiteral(1))))
               | _ -> L.build_sub e' (L.const_int i32_t 1) "sub" builder)
       )
-      | _ -> to_imp "expression"
     
     and id_gen builder id deref =
         if Hash.mem local_values id then

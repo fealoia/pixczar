@@ -2,9 +2,9 @@
 
 %token SEMI LPAREN RPAREN LBRACE RBRACE COMMA PLUS MINUS TIMES DIVIDE ASSIGN MOD
 %token NOT EQ NEQ LT LEQ GT GEQ AND OR INCREMENT DECREMENT
-%token LBRACK RBRACK COLON
+%token LBRACK RBRACK
 %token RETURN IF ELSEIF ELSE FOR WHILE BREAK CONTINUE INCLUDE
-%token INT BOOL FLOAT STRING VOID PIX PLACEMENT FRAME NULL NEW DOT STRUCT
+%token INT BOOL FLOAT STRING VOID PIX PLACEMENT FRAME NULL NEW DOT
 %token <int> LITERAL
 %token <bool> BLIT
 %token <string> ID SLIT
@@ -70,7 +70,6 @@ typ:
     prim_typ          { $1            }
   | nonprim_typ       { $1            }
   | typ LBRACK RBRACK { Array($1, 0)  }
-  | STRUCT ID         { Struct($2)    }
 
 vdecl_list:
     typ vdecl              { [(($1, snd (fst $2)), snd $2)]     }
@@ -79,10 +78,6 @@ vdecl_list:
 vdecl:
     ID             { ((Notyp, $1), Noexpr) }
   | ID ASSIGN expr { ((Notyp, $1), $3)     }
-
-struct_vdecl_list:
-    vdecl_list                        { [List.rev $1]       }
-  | struct_vdecl_list SEMI vdecl_list { (List.rev $3) :: $1 }
 
 stmt_list:
     /* nothing */  { [] }
@@ -108,8 +103,6 @@ stmt:
   | INCLUDE SLIT SEMI                         { Include($2)                        }
   | vdecl_list SEMI                           { VarDecs(List.rev $1)               }
   | expr DOT ID LPAREN args_opt RPAREN SEMI   { ObjCall($1, $3, $5)                }
-  | STRUCT ID LBRACE struct_vdecl_list SEMI RBRACE SEMI
-                                              { CreateStruct($2, List.rev $4)      }
 
 elseif_list:
   | ELSEIF LPAREN expr RPAREN stmt             { [ElseIf($3, $5)]     }
@@ -149,8 +142,6 @@ expr:
   | NEW prim_typ LBRACK LITERAL RBRACK     { NewArray($2, $4)               }
   | LBRACK args_opt RBRACK                 { CreateArray($2)                }
   | ID LBRACK expr RBRACK                  { AccessArray($1, $3)            }
-  | ID LBRACK LITERAL COLON LITERAL RBRACK { SubArray($1, $3, $5)           }
-  | expr DOT ID                            { AccessStruct($1, $3)           }
   | INCREMENT expr %prec PREINCREMENT      { Unop(PreIncrement, $2)         }
   | DECREMENT expr %prec PREDECREMENT      { Unop(PreDecrement, $2)         }
   | expr INCREMENT                         { PostUnop($1, PostIncrement)    }

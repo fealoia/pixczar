@@ -19,9 +19,7 @@ and sx =
   | SNew of typ * sexpr list
   | SNewArray of typ * int
   | SCreateArray of sexpr list
-  | SSubArray of string * int * int
   | SAccessArray of string * sexpr
-  | SAccessStruct of string * string
 
 type svar = bind * sexpr
 
@@ -39,7 +37,6 @@ and ss =
   | SInclude of string
   | SVarDecs of svar list
   | SObjCall of sexpr * string * sexpr list
-  | SCreateStruct of string * svar list list
 
 type sfunc_decl = {
     styp : typ;
@@ -73,11 +70,8 @@ let rec string_of_sexpr (_, t, e) =
   | SNew(t, el) ->
      "new " ^ string_of_typ t ^ "(" ^ String.concat ", " (List.map string_of_sexpr el) ^ ")"
   | SCreateArray(el) -> "[" ^ String.concat "," (List.map string_of_sexpr el) ^ "]"
-  | SSubArray(id, i1, i2) -> id ^ "[" ^ string_of_int i1 ^ ":" ^ string_of_int i2 ^ "]"
   | SAccessArray(id, e2) -> id ^ "[" ^ string_of_sexpr e2 ^ "]"
-  | SNewArray(t, i) -> "new " ^ string_of_typ t ^ "[" ^ string_of_int i ^ "]"
-  | SAccessStruct(i1, i2) -> i1 ^ "." ^ i2
-    ) ^ ")"
+  | SNewArray(t, i) -> "new " ^ string_of_typ t ^ "[" ^ string_of_int i ^ "]")
 
 let string_of_svdecl ((t1, id), (map, t2, value)) =
   match value with
@@ -106,8 +100,6 @@ let rec string_of_sstmt (map, e) = match e with
   | SInclude(s) -> "include " ^ s ^ ";\n"
   | SVarDecs(vars) -> String.concat "," (List.map string_of_svdecl vars) ^ ";\n"
   | SObjCall(e, f, el) -> string_of_sexpr e ^ "." ^ f ^ "(" ^ String.concat ", " (List.map string_of_sexpr el) ^ ");\n"
-  | SCreateStruct(s, vdecls) -> "Struct " ^ s ^ "\n{\n" ^
-      String.concat "" (List.map string_of_svdecls vdecls) ^ "};\n"
 
 let string_of_sfdecl fdecl =
   string_of_typ fdecl.styp ^ " " ^

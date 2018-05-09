@@ -84,7 +84,7 @@ let check (globals, functions) =
     (* Raise an exception if the given rvalue type cannot be assigned to
        the given lvalue type *)
     let check_assign lvaluet rvaluet err = match lvaluet with
-        Pix | Placement | Frame | Struct(_) ->
+        Pix | Placement | Frame ->
             if lvaluet = rvaluet || rvaluet = Null then lvaluet else raise (Failure err)
        | Array(t, _) -> (match rvaluet with
            Array(t, _) -> lvaluet
@@ -250,16 +250,6 @@ let check (globals, functions) =
               (Array(typ, _)) -> (map2, typ, SAccessArray(id, (map2, et2, e2')))
             | _            -> raise (Failure (typ_err))
           in check_access
-      | SubArray(id, beg, end') ->
-        let typ_err = id ^ " is not an array"
-        in let check_access =
-          match (type_of_identifier id map) with
-            (Array(typ, _)) -> 0
-          | _            -> raise (Failure (typ_err))
-           in
-           if beg <= end' then let _ = check_access in (map, Notyp,SSubArray(id, beg, end'))
-            else raise(Failure("begin index must be less than end index for array " ^ id))
-      | AccessStruct(s, field) -> if true then raise (Failure ("AccessStructure not yet implemented")) else (map, Notyp, SSubArray("", 0, 0))
     in
 
     (* Return a semantically-checked statement i.e. containing sexprs *)
@@ -269,7 +259,6 @@ let check (globals, functions) =
           (map, SIf(check_expr e map, check_stmt s1 map func loop_count,
           check_stmt s2 map func loop_count, check_stmt s3 map func loop_count))
       | ElseIf(e, s) -> (map, SElseIf(check_expr e map, check_stmt s map func loop_count))
-      | CreateStruct(x,y) -> raise (Failure("CreateStruct not yet implemented"))
       | For(e1, e2, e3, st) -> let (x,y,z) = check_expr e1 map in
                                let (x', y',z') = check_expr e2 x in
                                let (x'',y'',z'') = check_expr e3 x' in

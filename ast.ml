@@ -6,7 +6,7 @@ type uop = Neg | Not | PreIncrement | PreDecrement
 type post_uop = PostIncrement | PostDecrement
 
 type typ = Int | Bool | Float | String | Void | Pix | Placement | Frame | Notyp |
-           Array of typ * int | Struct of string | Null 
+           Array of typ * int | Null 
 
 type expr =
     Literal of int
@@ -24,9 +24,7 @@ type expr =
   | New of typ * expr list
   | NewArray of typ * int
   | CreateArray of expr list
-  | SubArray of string * int * int
   | AccessArray of string * expr
-  | AccessStruct of expr * string
 
 type bind = typ * string
 
@@ -45,7 +43,6 @@ type stmt =
   | Include of string
   | VarDecs of var list
   | ObjCall of expr * string * expr list
-  | CreateStruct of string * var list list
 
 type func_decl = {
     typ : typ;
@@ -95,7 +92,6 @@ let rec string_of_typ = function
   | Frame -> "Frame"
   | Notyp -> ""
   | Array(t, _) -> string_of_typ t ^ "[]"
-  | Struct(s) -> "Struct " ^ s
   | Null -> "Null"
 
 let rec string_of_expr = function
@@ -117,10 +113,8 @@ let rec string_of_expr = function
   | New(t, el) ->
      "new " ^ string_of_typ t ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ")"
   | CreateArray(el) -> "[" ^ String.concat "," (List.map string_of_expr el) ^ "]"
-  | SubArray(id, i1, i2) -> id ^ "[" ^ string_of_int i1 ^ ":" ^ string_of_int i2 ^ "]"
   | AccessArray(id, e2) -> id ^ "[" ^ string_of_expr e2 ^ "]"
   | NewArray(t, i) -> "new " ^ string_of_typ t ^ "[" ^ string_of_int i ^ "]"
-  | AccessStruct(e, i) -> string_of_expr e ^ "." ^ i
 
 let string_of_vdecl ((t, id), value) = 
   match value with
@@ -150,8 +144,6 @@ let rec string_of_stmt = function
   | Include(s) -> "include " ^ s ^";\n"
   | VarDecs(vars) -> String.concat "," (List.map string_of_vdecl vars) ^ ";\n"
   | ObjCall(e, f, el) -> string_of_expr e ^ "." ^ f ^ "(" ^ String.concat ", " (List.map string_of_expr el) ^ ");\n"
-  | CreateStruct(s, vdecls) -> "Struct " ^ s ^ "\n{\n" ^ 
-      String.concat "" (List.map string_of_vdecls vdecls) ^ "};\n" 
 
 let string_of_fdecl fdecl =
   string_of_typ fdecl.typ ^ " " ^

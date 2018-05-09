@@ -21,7 +21,6 @@ rule token = parse
 | '}'      { RBRACE }
 | '['      { LBRACK }
 | ']'      { RBRACK }
-| ':'      { COLON }
 | ';'      { SEMI }
 | ','      { COMMA }
 | '+'      { PLUS }
@@ -62,7 +61,6 @@ rule token = parse
 | "null"   { NULL }
 | "new"    { NEW }
 | "."      { DOT }
-| "Struct" { STRUCT }
 | "#include"{ INCLUDE }
 | digits as lxm { LITERAL(int_of_string lxm) }
 | digits '.'  digit* as lxm { FLIT(float_of_string lxm) }
