@@ -1,8 +1,0 @@
-stuff that didn't work
-
-array length()
-subarray
-cannot return non-int (float/str)
-(int) operator (float) automatically casting to float
-string concatenation with “+”
-inequality cannot compare int with float
