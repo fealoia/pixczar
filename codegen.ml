@@ -273,7 +273,7 @@ let translate (globals, functions) =
          SLiteral(i) ->
           let int_index = llvm_int_to_int index in
           let int_size = Hash.find array_info name in
-          (if int_index < 0 || int_index >= int_size
+          (if int_size > -1 && (int_index < 0 || int_index >= int_size)
             then raise(Failure("Illegal index")))
         | _ -> ()) in
       let (check,_) = StringMap.find "check_access" function_decls in

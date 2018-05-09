@@ -69,7 +69,7 @@ nonprim_typ:
 typ:
     prim_typ          { $1            }
   | nonprim_typ       { $1            }
-  | typ LBRACK RBRACK { Array($1, 0)  }
+  | typ LBRACK RBRACK { Array($1, -1)  }
 
 vdecl_list:
     typ vdecl              { [(($1, snd (fst $2)), snd $2)]     }
