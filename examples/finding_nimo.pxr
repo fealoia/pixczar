@@ -1,0 +1,170 @@
+// Idea, graphics, and code by Bryan Li
+
+#include "../stdlib.pxr"
+
+Int FPS = 35;
+
+Void lookAround(Placement p1, Placement p2, Frame[] frames, Int start, Int end, Int flip) {
+    Int i, count;
+    Placement plcmt = p1;
+    for (i = start; i < end; i++) {
+      if (count++ == flip) {
+        count = 0;
+        if (plcmt == p2) {
+          plcmt = p1;
+        }
+        else {
+          plcmt = p2;
+        }
+      }
+      frames[i].addPlacement(plcmt);
+  }
+}
+
+Void main() {
+  // TITLE CARD >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+  Pix title = new Pix();
+  title.uploadImage("images/finding_nimo/title.png", 1280, 720);
+  Placement titlePlcmt = new Placement(title, 0, 0);
+
+  Frame[] frames = new Frame[1300];
+  Int i;
+
+  fillFrames(frames, titlePlcmt, 0, 2 * FPS);
+
+  // SCENE 1: Nimo taken away >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+  /// left and right facing Nimo
+  Pix nimol = new Pix();
+  nimol.uploadImage("images/finding_nimo/nimo_l.png", 400, 267);
+  Pix nimor = new Pix();
+  nimor.uploadImage("images/finding_nimo/nimo_r.png", 400, 267);
+
+  Placement nimolPlcmt = new Placement(nimol, 200, 200);
+  Placement nimorPlcmt = new Placement(nimor, 200, 200);
+
+  lookAround(nimolPlcmt, nimorPlcmt, frames, 2 * FPS, 4 * FPS, 15);
+  lookAround(nimolPlcmt, nimorPlcmt, frames, 4 * FPS, 5 * FPS, 5);
+
+  Pix naut = new Pix();
+  naut.uploadImage("images/finding_nimo/nautilus.png", 600, 355);
+
+  // /// Nautilus comes from top right
+  keyFrame(frames, 2 * FPS, naut, [1280, 720], [200, 200], 3 * FPS);
+
+  // /// Nautilus pulls Nimo away
+  keyFrame(frames, 5 * FPS, naut, [200, 200], [1280, 720], 2 * FPS);
+  keyFrame(frames, 5 * FPS, nimol, [200, 200], [1280, 720], 2 * FPS);
+
+  // SCENE 2: Mat + Bryan >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+  Pix matl = new Pix();
+  matl.uploadImage("images/finding_nimo/mat_l.png", 450, 300);
+  Pix matr = new Pix();
+  matr.uploadImage("images/finding_nimo/mat_r.png", 450, 300);
+
+  /// Mat moves in
+  keyFrame(frames, 7 * FPS, matr, [-450, 200], [200, 200], 2 * FPS);
+
+  Placement matlPlcmt = new Placement(matl, 200, 200);
+  Placement matrPlcmt = new Placement(matr, 200, 200);
+  lookAround(matlPlcmt, matrPlcmt, frames, 9 * FPS, 11 * FPS, 10);
+
+  Pix bryanl = new Pix();
+  bryanl.uploadImage("images/finding_nimo/bryan_l.png", 400, 400);
+  Pix bryanr = new Pix();
+  bryanr.uploadImage("images/finding_nimo/bryan_r.png", 400, 400);
+
+  // Bryan moves in
+  keyFrame(frames, 9 * FPS, bryanl, [1280, 200], [1280 - 600, 200], 2 * FPS);
+
+  fillFrames(frames, matrPlcmt, 11 * FPS, ~(11.5 * FPS));
+  lookAround(matlPlcmt, matrPlcmt, frames, ~(11.5 * FPS), 12 * FPS, 4);
+  Placement bryanlPlcmt = new Placement(bryanl, 1280 - 600, 200);
+  Placement bryanrPlcmt = new Placement(bryanr, 1280 - 600, 200);
+  fillFrames(frames, bryanlPlcmt, 11 * FPS, 12 * FPS);
+
+  // Bryan and Matt swim off
+  keyFrame(frames, 12 * FPS, matr, [20, 200], [1280, 200], 2 * FPS);
+  keyFrame(frames, 12 * FPS, bryanr, [1280 - 600, 200], [1280, 200], FPS);
+
+  // SCENE 3: sharks come in >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+  keyFrame(frames, 14 * FPS, matr, [-450, 50], [200, 50], FPS);
+  keyFrame(frames, 14 * FPS, bryanr, [-400, 300], [200, 300], FPS);
+
+  Placement matrPlcmt1 = new Placement(matr, 200, 50);
+  Placement matrPlcmt2 = new Placement(matr, 200, 100);
+  Placement bryanrPlcmt1 = new Placement(bryanr, 200, 300);
+  fillFrames(frames, bryanrPlcmt1, 15 * FPS, 16 * FPS);
+  lookAround(matrPlcmt1, matrPlcmt2, frames, ~(15 * FPS), 16 * FPS, 4);
+
+  Pix garyl = new Pix();
+  garyl.uploadImage("images/finding_nimo/gary_l.png", 450, 300);
+  Pix garyr = new Pix();
+  garyr.uploadImage("images/finding_nimo/gary_r.png", 450, 300);
+  Pix frankl = new Pix();
+  frankl.uploadImage("images/finding_nimo/frank_l.png", 450, 300);
+  Pix frankr = new Pix();
+  frankr.uploadImage("images/finding_nimo/frank_r.png", 450, 300);
+  Placement garyrPlcmt = new Placement(garyr, 800, 400);
+  Placement garylPlcmt = new Placement(garyl, 800, 400);
+  Placement frankrPlcmt = new Placement(frankr, 800, 0);
+  Placement franklPlcmt = new Placement(frankl, 800, 0);
+
+  fillFrames(frames, garylPlcmt, 14 * FPS, 16 * FPS);
+  fillFrames(frames, franklPlcmt, 14 * FPS, 16 * FPS);
+
+  keyFrame(frames, 16 * FPS, matr, [200, 50], [1280, 50], ~(0.6 * FPS));
+  keyFrame(frames, 16 * FPS, bryanr, [200, 300], [1280, 300], FPS);
+  keyFrame(frames, 16 * FPS, garyr, [800, 300], [1280, 300], ~(0.6 * FPS));
+  keyFrame(frames, 16 * FPS, frankr, [800, 0], [1280, 0], ~(0.6 * FPS));
+
+  // SCENE 4: Townsend points way >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+  Pix all = new Pix();
+  all.uploadImage("images/finding_nimo/all.png", 900, 600);
+  Pix townl = new Pix();
+  townl.uploadImage("images/finding_nimo/townsend_l.png", 500, 333);
+  Pix townr = new Pix();
+  townr.uploadImage("images/finding_nimo/townsend_r.png", 500, 333);
+
+  Placement allPlcmt = new Placement(all, 0, 100);
+  Placement townrPlcmt = new Placement(townr, 800, 200);
+  Placement townlPlcmt = new Placement(townl, 800, 200);
+
+  keyFrame(frames, 18 * FPS, all, [-600, 100], [0, 100], 2 * FPS);
+  fillFrames(frames, townlPlcmt, 18 * FPS, 20 * FPS);
+  fillFrames(frames, allPlcmt, 20 * FPS, 21 * FPS);
+
+  fillFrames(frames, townrPlcmt, 20 * FPS, ~(20.5 * FPS));
+  keyFrame(frames, ~(20.5 * FPS), townr, [800, 200], [1280, 720], FPS);
+  keyFrame(frames, 21 * FPS, all, [0, 100], [400, 200], FPS);
+  keyFrame(frames, 22 * FPS, all, [400, 200], [1280, 720], FPS);
+
+  keyFrame(frames, 23 * FPS, townr, [-500, -333], [1280, 720], 4 * FPS);
+  keyFrame(frames, 24 * FPS, all, [-900, -600], [1280, 720], 4 * FPS);
+
+  // SCENE 5: reunion >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+  Placement nimolPlcmt1 = new Placement(nimol, 850, 350);
+  Placement nimolPlcmt2 = new Placement(nimol, 850, 400);
+  lookAround(nimolPlcmt1, nimolPlcmt2, frames, 28 * FPS, 35 * FPS, 5);
+
+  keyFrame(frames, 28 * FPS, townr, [-500, -333], [800, 0], 2 * FPS);
+  keyFrame(frames, ~(28.5 * FPS), all, [-900, -600], [0, 100], 2 * FPS);
+  Placement townrPlcmt1 = new Placement(townr, 750, 0);
+  fillFrames(frames, townrPlcmt1, 30 * FPS, 35 * FPS);
+  fillFrames(frames, allPlcmt, ~(30.5 * FPS), 35 * FPS);
+
+  // ocean background >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+  Int[] p292 = [98, 168, 229];
+  Pix ocean = new Pix(); //
+  ocean.makeRectangle(1280, 720, p292);
+  Placement oceanPlcmt = new Placement(ocean, 0, 0);
+  fillFrames(frames, oceanPlcmt, 2 * FPS, 1200);
+
+  // Int start = 28 * FPS;
+  // for(i = 0; i < 200; i++) {
+    // Frame x = frames[start + i];
+    // frames[i] = x;
+  // }
+  render(frames, FPS, 1280, 720);
+}
