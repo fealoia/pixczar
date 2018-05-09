@@ -56,32 +56,32 @@ Void main() {
   keyFrame(frames,125,lamp_left,[800,200],[750,200],20);
   Placement current = new Placement(lamp_left, 750, 200);
   fillFrames(frames, current, 145, 165);
-  Int it, t = 0, width = 1;
   Int[] proj = [165,750];
 
+  Int it;
   for(it=0;it<6;it++) {
-      proj = projectile(frames, proj[t], lamp_left, -10, proj[width], 200, 350, -50);
-      proj = projectile(frames, proj[t], lamp_left, -4, proj[width], 350, 200, 18);
+      proj = projectile(frames, proj[0], lamp_left, -10, proj[1], 200, 350, -50);
+      proj = projectile(frames, proj[0], lamp_left, -4, proj[1], 350, 200, 18);
   }
   
-  current = new Placement(lamp_left, proj[width], 200);
-  fillFrames(frames, current, proj[t], proj[t]+10);
+  current = new Placement(lamp_left, proj[1], 200);
+  fillFrames(frames, current, proj[0], proj[0]+10);
 
   Pix lamp_right = new Pix();
   lamp_right.uploadImage("images/lamp_right.png", 80, 80);
-  current = new Placement(lamp_right, proj[width], 200);
-  fillFrames(frames, current, proj[t]+10, proj[t]+20);
+  current = new Placement(lamp_right, proj[1], 200);
+  fillFrames(frames, current, proj[0]+10, proj[0]+20);
 
   Pix lamp_right_small = new Pix();
   lamp_right_small.uploadImage("images/lamp_right.png", 60, 60);
-  Placement small = new Placement(lamp_right_small, proj[width], 200);
+  Placement small = new Placement(lamp_right_small, proj[1], 200);
   
   for(it=20; it<=50; it = it + 10) {
-    fillFrames(frames, current, proj[t]+it, proj[t]+it+5);
-    fillFrames(frames, small, proj[t]+it+5, proj[t]+it+10);
+    fillFrames(frames, current, proj[0]+it, proj[0]+it+5);
+    fillFrames(frames, small, proj[0]+it+5, proj[0]+it+10);
   }
   
-  proj = projectile(frames,proj[t]+60, lamp_right, 4, proj[width], 200, 300, -10);
+  proj = projectile(frames,proj[0]+60, lamp_right, 4, proj[1], 200, 300, -10);
 
   Pix i_medium = new Pix();
   i_medium.uploadImage("images/i.png", 100, 75);
@@ -91,36 +91,36 @@ Void main() {
   i_small.uploadImage("images/i.png", 100, 50);
   Placement p_small = new Placement(i_small, 130, 200);
 
-  Placement above = new Placement(lamp_right, proj[width], 300);
-  Placement top = new Placement(lamp_right, proj[width], 280);
-  Placement middle = new Placement(lamp_right, proj[width], 255);
-  Placement bottom = new Placement(lamp_right, proj[width], 230);
+  Placement above = new Placement(lamp_right, proj[1], 300);
+  Placement top = new Placement(lamp_right, proj[1], 280);
+  Placement middle = new Placement(lamp_right, proj[1], 255);
+  Placement bottom = new Placement(lamp_right, proj[1], 230);
   
-  proj[t] = proj[t] - 17;
+  proj[0] = proj[0] - 17;
   for(it=0;it<4;it++) {
-    proj[t] = proj[t] + 17;
-    keyFrame(frames,proj[t],lamp_right,[proj[width],300],[proj[width],280],5);
-    fillFrames(frames, top, proj[t]+5, proj[t]+7);
-    fillFrames(frames, middle, proj[t]+7, proj[t]+9);
-    fillFrames(frames, p_medium, proj[t]+7, proj[t]+9);
-    fillFrames(frames, bottom, proj[t]+9, proj[t]+11);
-    fillFrames(frames, p_small, proj[t]+9, proj[t]+11);
+    proj[0] = proj[0] + 17;
+    keyFrame(frames,proj[0],lamp_right,[proj[1],300],[proj[1],280],5);
+    fillFrames(frames, top, proj[0]+5, proj[0]+7);
+    fillFrames(frames, middle, proj[0]+7, proj[0]+9);
+    fillFrames(frames, p_medium, proj[0]+7, proj[0]+9);
+    fillFrames(frames, bottom, proj[0]+9, proj[0]+11);
+    fillFrames(frames, p_small, proj[0]+9, proj[0]+11);
     if(it <3) {
-      fillFrames(frames, middle, proj[t]+11, proj[t]+13);
-      fillFrames(frames, p_medium, proj[t]+11, proj[t]+13);
-      fillFrames(frames, top, proj[t]+13, proj[t]+15);
-      fillFrames(frames, above, proj[t]+15, proj[t]+17);
-      fillFrames(frames, iPlcmt, proj[t]+13, proj[t]+24);
+      fillFrames(frames, middle, proj[0]+11, proj[0]+13);
+      fillFrames(frames, p_medium, proj[0]+11, proj[0]+13);
+      fillFrames(frames, top, proj[0]+13, proj[0]+15);
+      fillFrames(frames, above, proj[0]+15, proj[0]+17);
+      fillFrames(frames, iPlcmt, proj[0]+13, proj[0]+24);
     }
   }
-  keyFrame(frames, proj[t]+11, lamp_right, [proj[width], 230], [proj[width], 200],5);
-  current = new Placement(lamp_right, proj[width], 200);
-  fillFrames(frames, current, proj[t]+16, proj[t]+51);
+  keyFrame(frames, proj[0]+11, lamp_right, [proj[1], 230], [proj[1], 200],5);
+  current = new Placement(lamp_right, proj[1], 200);
+  fillFrames(frames, current, proj[0]+16, proj[0]+51);
 
   Pix lamp_center = new Pix();
   lamp_center.uploadImage("images/lamp_center.png", 80, 80);
-  Placement center = new Placement(lamp_center, proj[width], 200);
-  fillFrames(frames, center, proj[t]+51, 600);
+  Placement center = new Placement(lamp_center, proj[1], 200);
+  fillFrames(frames, center, proj[0]+51, 600);
   
   for(i=125; i<length(frames); i++) {
       frames[i].addPlacement(pPlcmt);
