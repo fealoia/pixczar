@@ -76,3 +76,6 @@ returns: input_included.pxr
 
 With this new .pxr file, you can proceed with compilation. Note that this means that
 the pixczar compiler will never see the #include.
+________________________________________________________________
+Examples:
+Finding Nimo short film https://youtu.be/srKmoalSxCE
