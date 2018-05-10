@@ -1,0 +1,11 @@
+Void main() {
+  Int x = 1;
+  Int y = -1;
+  Float z = 3.4;
+  Float w = -3.4;
+  print(~x);
+  print(~y);
+  print(~z);
+  print(~w);
+}
+
