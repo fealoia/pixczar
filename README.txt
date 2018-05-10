@@ -19,7 +19,7 @@ Installing Dependencies: (OpenGL and SOIL)
   MacOS:
     brew install glew;
     brew install glfw;
-    git clone https://github.com/kbranigan/Simple-OpenGL-Image- Library.git SOIL;
+    git clone https://github.com/kbranigan/Simple-OpenGL-Image-Library.git SOIL;
     cd SOIL;
     make;
     make install;
